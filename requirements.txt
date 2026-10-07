@@ -1,0 +1,7 @@
+pandas>=2.2
+openpyxl>=3.1
+pyarrow>=16
+requests>=2.32
+numpy>=1.26
+jupyterlab>=4.2
+matplotlib>=3.9

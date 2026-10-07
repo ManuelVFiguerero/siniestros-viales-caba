@@ -1,0 +1,42 @@
+{
+  "total": 62737,
+  "desde": "2019-01-01",
+  "hasta": "2025-12-31",
+  "por_condicion": [
+    {
+      "condicion": "tormenta",
+      "siniestros": 524,
+      "horas": 518,
+      "esperados": 576.9,
+      "riesgo_relativo": 0.91
+    },
+    {
+      "condicion": "lluvia",
+      "siniestros": 5485,
+      "horas": 5471,
+      "esperados": 6299.1,
+      "riesgo_relativo": 0.87
+    },
+    {
+      "condicion": "niebla",
+      "siniestros": 348,
+      "horas": 556,
+      "esperados": 343.1,
+      "riesgo_relativo": 1.01
+    },
+    {
+      "condicion": "nublado",
+      "siniestros": 18650,
+      "horas": 18225,
+      "esperados": 20030.9,
+      "riesgo_relativo": 0.93
+    },
+    {
+      "condicion": "despejado",
+      "siniestros": 37730,
+      "horas": 36596,
+      "esperados": 37730.0,
+      "riesgo_relativo": 1.0
+    }
+  ]
+}

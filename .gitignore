@@ -1,0 +1,13 @@
+# Python
+.venv/
+__pycache__/
+.ipynb_checkpoints/
+data/processed/
+
+# Web
+web/node_modules/
+web/dist/
+
+# Sistema / Office
+.DS_Store
+~$*
