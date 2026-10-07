@@ -13,6 +13,7 @@ data/
 pipeline/       ETL en Python, un script por paso
 notebooks/      análisis exploratorio
 web/            app React + deck.gl + MapLibre (mapa de calor / hexágonos 3D)
+index.html      la app compilada en un solo archivo: doble clic y listo
 ```
 
 ## Pipeline
@@ -32,7 +33,7 @@ python pipeline/04_exportar_web.py         # JSON para la web + riesgo relativo 
 | 01 | 65.818 siniestros → 62.737 con lat/lon dentro de CABA y fecha/hora válidas |
 | 02 | Open-Meteo Historical API (reanálisis ERA5), sin API key. Variables: código WMO, precipitación, temperatura, humedad, viento, ráfagas, nubosidad |
 | 03 | Cada siniestro toma el clima del punto de muestreo más cercano en la hora del hecho |
-| 04 | Exporta `web/public/data/` y calcula el riesgo relativo estandarizado |
+| 04 | Exporta `web/src/data/` y calcula el riesgo relativo estandarizado |
 
 ### Clasificación del clima (`pipeline/clima.py`)
 
@@ -55,12 +56,18 @@ Primer resultado: con lluvia hay ~13 % **menos** siniestros reportados por hora.
 investigar: con lluvia baja el volumen de tránsito (menos exposición) y se denuncian menos
 choques leves. Para separar ambos efectos hace falta un dato de exposición (conteos vehiculares).
 
-## Web
+## Ver el mapa
+
+**Abrí `index.html` (en la raíz del repo) con doble clic.** Es un único archivo con todo
+adentro (código, estilos y datos); solo necesita internet para el mapa base.
+
+Para desarrollar la web:
 
 ```bash
 cd web
 npm install
-npm run dev
+npm run dev        # servidor de desarrollo
+npm run build      # regenera ../index.html
 ```
 
 Se publica sola en GitHub Pages con cada push a `main` (`.github/workflows/deploy.yml`).

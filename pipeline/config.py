@@ -4,7 +4,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 RAW = ROOT / "data" / "raw"
 PROCESSED = ROOT / "data" / "processed"
-WEB_DATA = ROOT / "web" / "public" / "data"
+WEB_DATA = ROOT / "web" / "src" / "data"
 
 SINIESTROS_XLSX = RAW / "siniestros_viales_hechos.xlsx"
 SINIESTROS_LIMPIOS = PROCESSED / "siniestros.parquet"

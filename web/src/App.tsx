@@ -2,11 +2,16 @@ import { useEffect, useMemo, useState } from 'react'
 import DeckGL from '@deck.gl/react'
 import { HeatmapLayer, HexagonLayer } from '@deck.gl/aggregation-layers'
 import { Map } from 'react-map-gl/maplibre'
+import maplibregl from 'maplibre-gl'
+import maplibreWorker from 'maplibre-gl/dist/maplibre-gl-csp-worker.js?raw'
 import 'maplibre-gl/dist/maplibre-gl.css'
 
 import { cargarDatos, ETIQUETA_CONDICION, filtrar, PESO_GRAVEDAD, type Filtros, type Siniestros, type Stats } from './data'
 import { RiskChart } from './components/RiskChart'
 import { HourChart } from './components/HourChart'
+
+// El worker de MapLibre se incrusta como blob para que funcione dentro del index.html único (incluso con file://).
+maplibregl.setWorkerUrl(URL.createObjectURL(new Blob([maplibreWorker], { type: 'text/javascript' })))
 
 const ESTILO_MAPA = 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json'
 const VISTA_INICIAL = { longitude: -58.445, latitude: -34.615, zoom: 11.3, pitch: 0, bearing: 0 }
@@ -113,7 +118,8 @@ export default function App() {
             : null
         }
       >
-        <Map mapStyle={ESTILO_MAPA} attributionControl={{ compact: true }} />
+        {/* mapLib explícito: el import dinámico por defecto no funciona en el bundle de un solo archivo */}
+        <Map mapLib={maplibregl} mapStyle={ESTILO_MAPA} attributionControl={{ compact: true }} />
       </DeckGL>
 
       <aside className="panel panel-left">

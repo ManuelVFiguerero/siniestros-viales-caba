@@ -47,13 +47,11 @@ export const ETIQUETA_CONDICION: Record<string, { label: string; icon: string }>
 // Peso de cada gravedad cuando se pondera el mapa (leve, grave, mortal).
 export const PESO_GRAVEDAD = [1, 4, 12]
 
+// Los datos se empaquetan dentro del bundle (no se hace fetch) para que el index.html
+// final funcione abriéndolo con doble clic, sin servidor.
 export async function cargarDatos(): Promise<{ siniestros: Siniestros; stats: Stats }> {
-  const base = import.meta.env.BASE_URL
-  const [siniestros, stats] = await Promise.all([
-    fetch(`${base}data/siniestros.json`).then((r) => r.json()),
-    fetch(`${base}data/stats.json`).then((r) => r.json()),
-  ])
-  return { siniestros, stats }
+  const [siniestros, stats] = await Promise.all([import('./data/siniestros.json'), import('./data/stats.json')])
+  return { siniestros: siniestros.default as Siniestros, stats: stats.default as Stats }
 }
 
 export function filtrar(d: Siniestros, f: Filtros): number[] {
