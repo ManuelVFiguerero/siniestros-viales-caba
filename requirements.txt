@@ -5,3 +5,11 @@ requests>=2.32
 numpy>=1.26
 jupyterlab>=4.2
 matplotlib>=3.9
+# Modelo de riesgo (pasos 05-08). En macOS, LightGBM necesita `brew install libomp`.
+h3>=4.1
+shapely>=2.0
+holidays>=0.60
+scikit-learn>=1.5
+lightgbm>=4.5
+shap>=0.46
+tabulate>=0.9

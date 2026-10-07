@@ -39,3 +39,26 @@ VARIABLES_CLIMA = [
 
 # Orden de prioridad: si en la misma hora hay tormenta y lluvia, gana tormenta.
 CONDICIONES = ["tormenta", "lluvia", "niebla", "nublado", "despejado"]
+
+# --- Modelo de riesgo (pasos 05-08) ---
+COMUNAS_GEOJSON = RAW / "comunas.geojson"
+COMUNAS_URL = "https://cdn.buenosaires.gob.ar/datosabiertos/datasets/ministerio-de-educacion/comunas/comunas.geojson"
+OSM_VIAS = PROCESSED / "osm_vias.json"
+OVERPASS_URL = "https://overpass-api.de/api/interpreter"
+GRILLA = PROCESSED / "grilla_h3.parquet"
+DATASET_MODELO = PROCESSED / "dataset_modelo.parquet"
+MODELOS = PROCESSED / "modelos"
+REPORTES = ROOT / "reports"
+
+# Resolución 9: hexágonos de ~174 m de lado (~350 m de punta a punta, ~0,1 km²).
+H3_RES = 9
+
+# Validación con corte temporal: el modelo nunca ve el período que se evalúa.
+ANIOS_TRAIN = [2019, 2020, 2021, 2022, 2023]
+ANIOS_TEST = [2024, 2025]
+# Dentro del entrenamiento, 2023 se usa para el early stopping de LightGBM.
+ANIO_VALIDACION = 2023
+
+# Celda-horas sin siniestro que se muestrean (de ~120 M posibles). Cada una pesa 1/tasa de muestreo.
+CEROS_MUESTREADOS = 5_000_000
+SEMILLA = 42
