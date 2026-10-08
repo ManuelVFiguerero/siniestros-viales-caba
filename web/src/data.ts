@@ -82,6 +82,47 @@ export interface Modelo {
   poisson_irr: { variable: string; etiqueta: string; irr: number }[]
 }
 
+// ---------- patrones (pipeline/09_patrones.py) ----------
+
+export interface Razon {
+  obs: number
+  esp: number
+  rr: number
+  lo: number
+  hi: number
+}
+
+export interface ZonaPatron {
+  nombre: string
+  comuna: number
+  valor: number
+  id: string
+}
+
+export type GraficoPatron =
+  | { tipo: 'curva_hora'; modelo: { lluvia: number[]; tormenta: number[] }; observado: { franja: string; desde: number; hasta: number; lluvia: Razon; tormenta: Razon }[] }
+  | { tipo: 'victimas'; filas: { modo: string; dia: Razon; noche: Razon }[] }
+  | { tipo: 'pares'; filas: (Razon & { etiqueta: string })[] }
+  | { tipo: 'interacciones'; filas: { a: string; b: string; valor: number; clima: boolean }[] }
+
+export interface Patron {
+  id: string
+  titulo: string
+  resumen: string
+  lectura: string
+  veredicto: 'confirmado' | 'sugerente' | 'sin efecto' | 'modelo'
+  grafico?: GraficoPatron
+  zonas?: ZonaPatron[]
+  zonas_caen?: ZonaPatron[]
+  zonas_suben?: ZonaPatron[]
+  escenario?: { dia: number; hora: number; clima: string }
+}
+
+export interface Patrones {
+  metodo: string
+  patrones: Patron[]
+}
+
 // Los datos se empaquetan dentro del bundle (no se hace fetch) para que el index.html
 // final funcione abriéndolo con doble clic, sin servidor.
 export async function cargarDatos(): Promise<{ siniestros: Siniestros; stats: Stats }> {
@@ -89,9 +130,13 @@ export async function cargarDatos(): Promise<{ siniestros: Siniestros; stats: St
   return { siniestros: siniestros.default as Siniestros, stats: stats.default as Stats }
 }
 
-export async function cargarModelo(): Promise<{ riesgo: RiesgoJSON; modelo: Modelo }> {
-  const [riesgo, modelo] = await Promise.all([import('./data/riesgo.json'), import('./data/modelo.json')])
-  return { riesgo: riesgo.default as unknown as RiesgoJSON, modelo: modelo.default as unknown as Modelo }
+export async function cargarModelo(): Promise<{ riesgo: RiesgoJSON; modelo: Modelo; patrones: Patrones }> {
+  const [riesgo, modelo, patrones] = await Promise.all([import('./data/riesgo.json'), import('./data/modelo.json'), import('./data/patrones.json')])
+  return {
+    riesgo: riesgo.default as unknown as RiesgoJSON,
+    modelo: modelo.default as unknown as Modelo,
+    patrones: patrones.default as unknown as Patrones,
+  }
 }
 
 export function filtrar(d: Siniestros, f: Filtros): number[] {

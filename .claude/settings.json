@@ -25,7 +25,8 @@
       "Bash(gh auth *)",
       "Bash(git ls-remote *)",
       "Bash(ssh -o BatchMode=yes -o StrictHostKeyChecking=accept-new -T git@github.com)",
-      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" --max-time 10 https://api.github.com)"
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" --max-time 10 https://api.github.com)",
+      "Bash(git check-ignore *)"
     ],
     "additionalDirectories": [
       "/private/tmp/claude-501"

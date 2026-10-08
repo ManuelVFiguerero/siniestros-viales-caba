@@ -20,15 +20,17 @@ type Escala = 'fija' | 'relativa'
 interface Props {
   riesgo: Riesgo
   cabecera: ReactNode
+  /** Si viene de un patrón: arranca explorando ese escenario (y con esa celda elegida) en vez de en vivo. */
+  inicial?: { dia: number; hora: number; clima: string; celda?: string }
 }
 
-export function RiesgoPrevisto({ riesgo, cabecera }: Props) {
+export function RiesgoPrevisto({ riesgo, cabecera, inicial }: Props) {
   // En vivo: día y hora reales de Buenos Aires y el clima pronosticado para esta hora.
   // Al tocar cualquier control se pasa a explorar, partiendo del momento actual.
-  const [vivo, setVivo] = useState(true)
-  const [climaSel, setClimaSel] = useState(0)
-  const [diaSel, setDiaSel] = useState(0)
-  const [horaSel, setHoraSel] = useState(0)
+  const [vivo, setVivo] = useState(!inicial)
+  const [climaSel, setClimaSel] = useState(inicial ? Math.max(0, riesgo.climas.indexOf(inicial.clima)) : 0)
+  const [diaSel, setDiaSel] = useState(inicial?.dia ?? 0)
+  const [horaSel, setHoraSel] = useState(inicial?.hora ?? 0)
   const ahora = useAhoraBA()
   const pronostico = usePronostico()
   const horasPron = pronostico.estado === 'ok' ? pronostico.horas : []
@@ -52,7 +54,10 @@ export function RiesgoPrevisto({ riesgo, cabecera }: Props) {
   const volverEnVivo = () => { setReproduciendo(false); setVivo(true) }
   const [rep, setRep] = useState<Representacion>('hex')
   const [escala, setEscala] = useState<Escala>('fija')
-  const [seleccion, setSeleccion] = useState<number | null>(null)
+  const [seleccion, setSeleccion] = useState<number | null>(() => {
+    const i = inicial?.celda ? riesgo.celdas.findIndex((c) => c.id === inicial.celda) : -1
+    return i >= 0 ? i : null
+  })
   const [hover, setHover] = useState<{ i: number; x: number; y: number } | null>(null)
   const [reproduciendo, setReproduciendo] = useState(false)
   const mapRef = useRef<MapRef>(null)
@@ -146,6 +151,13 @@ export function RiesgoPrevisto({ riesgo, cabecera }: Props) {
     if (!m) return
     m.easeTo(rep === '3d' ? { pitch: 52, bearing: -18, duration: 900 } : { pitch: 0, bearing: 0, duration: 700 })
   }, [rep])
+
+  // Al llegar desde un patrón con una celda elegida, el mapa vuela hasta ella cuando termina de cargar.
+  const alCargarMapa = () => {
+    if (seleccion === null) return
+    const [lon, lat] = riesgo.celdas[seleccion].c
+    mapRef.current?.flyTo({ center: [lon, lat], zoom: 14, duration: 1200 })
+  }
 
   const irA = (i: number) => {
     setSeleccion(i)
@@ -354,7 +366,7 @@ export function RiesgoPrevisto({ riesgo, cabecera }: Props) {
       </aside>
 
       <main className="stage">
-        <MapaBase mapRef={mapRef} layers={capas} onHover={alPasar} onClick={alClic} />
+        <MapaBase mapRef={mapRef} layers={capas} onHover={alPasar} onClick={alClic} onCargar={alCargarMapa} />
         <div className={`stamp${vivo ? ' is-live' : ''}`} aria-hidden>
           {vivo && <i className="live-dot" />}
           {vivo && <span>En vivo</span>}

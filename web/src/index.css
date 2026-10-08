@@ -42,7 +42,7 @@ code { font-family: var(--mono); font-size: 0.92em; color: var(--ink-2); }
 .brand-mark { width: 26px; height: 26px; color: var(--ink); flex: none; }
 .brand-name { margin: 0; font-weight: 600; font-size: 15px; letter-spacing: -0.005em; }
 .brand-sub { margin: 1px 0 0; color: var(--ink-3); font-size: 12px; }
-.tabs { display: flex; gap: 20px; margin-top: 16px; }
+.tabs { display: flex; gap: 18px; margin-top: 16px; }
 .tabs button { background: none; border: 0; padding: 0 0 11px; color: var(--ink-3); cursor: pointer; font-size: 13px; font-weight: 500; border-bottom: 2px solid transparent; margin-bottom: -1px; transition: color 0.15s; }
 .tabs button:hover { color: var(--ink-2); }
 .tabs button.on { color: var(--ink); border-bottom-color: var(--ink); }
@@ -222,7 +222,7 @@ dd.down, .down { color: var(--down); }
 .report { overflow-y: auto; overscroll-behavior: contain; background: var(--bg); scrollbar-width: thin; scrollbar-color: var(--line-2) transparent; }
 .report-body { max-width: 1040px; padding: 36px 44px 64px; }
 .report-head { padding-bottom: 28px; border-bottom: 1px solid var(--line); }
-.report-head h1 { margin: 0 0 12px; font-size: 28px; line-height: 1.2; font-weight: 600; letter-spacing: -0.02em; max-width: 26ch; }
+.report-head h1 { margin: 0 0 12px; font-size: 28px; line-height: 1.2; font-weight: 600; letter-spacing: -0.02em; max-width: 32ch; text-wrap: balance; }
 .report-head .lede { max-width: 68ch; }
 .report-sec { padding: 28px 0; border-bottom: 1px solid var(--line); }
 .report-sec h2 { margin: 0 0 6px; font-size: 15px; font-weight: 600; letter-spacing: -0.005em; }
@@ -315,6 +315,61 @@ dd.down, .down { color: var(--down); }
 .caveats p { margin: 0; color: var(--ink-2); font-size: 13px; line-height: 1.6; }
 .caveats b { display: block; color: var(--ink); font-weight: 600; margin-bottom: 4px; }
 
+/* ---------- patrones ---------- */
+
+.lede.flush { margin: 0; }
+.toc { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.toc a { display: grid; grid-template-columns: 22px 1fr 8px; gap: 8px; align-items: baseline; padding: 6px 4px; border-radius: 4px; color: var(--ink-2); text-decoration: none; font-size: 12.5px; line-height: 1.4; }
+.toc a:hover { background: var(--panel-2); color: var(--ink); }
+.toc-n { font-family: var(--mono); font-size: 11px; color: var(--ink-3); }
+.dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex: none; }
+.dot.ok, .badge.ok { --c: #3fb27f; }
+.dot.warn, .badge.warn { --c: #e0a03a; }
+.dot.model, .badge.model { --c: #8d9bd6; }
+.dot.muted, .badge.muted { --c: #6c737a; }
+.dot { background: var(--c); }
+.badge-key { list-style: none; margin: 12px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; font-size: 12px; color: var(--ink-2); }
+.badge-key li { display: flex; align-items: center; gap: 8px; }
+
+.patron { scroll-margin-top: 16px; }
+.patron-head { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+.patron-n { font-family: var(--mono); font-size: 12px; color: var(--ink-3); }
+.badge { display: inline-flex; align-items: center; gap: 6px; font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--c); border: 1px solid color-mix(in srgb, var(--c) 45%, transparent); border-radius: 999px; padding: 2px 9px; }
+.badge::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--c); }
+.report-sec h2.patron-title { font-size: 19px; line-height: 1.3; letter-spacing: -0.01em; margin-bottom: 8px; max-width: 40ch; }
+.patron .lede.small { margin-bottom: 18px; }
+.patron-read { margin: 16px 0 0; max-width: 72ch; color: var(--ink-2); font-size: 13px; line-height: 1.6; padding-left: 12px; border-left: 2px solid var(--line-2); }
+.patron-read b { color: var(--ink); font-weight: 600; }
+.map-link { margin-top: 14px; padding: 5px 12px; }
+
+.legend-note { color: var(--ink-3); font-size: 11.5px; }
+.axis-note { margin: 4px 0 0; color: var(--ink-3); font-size: 11.5px; }
+.chart-box .ref-solid { stroke: var(--ink-3); stroke-width: 1; }
+.chart-tip p.tip-obs { margin-top: 4px; color: var(--ink-3); font-size: 11.5px; }
+
+.rr-rows { max-width: 720px; display: flex; flex-direction: column; gap: 4px; }
+.rr-row { display: grid; grid-template-columns: 170px 1fr 64px; gap: 12px; align-items: center; font-size: 12.5px; min-height: 24px; }
+.rr-axis { min-height: 16px; }
+.rr-label { color: var(--ink-2); }
+.rr-track { position: relative; height: 100%; min-height: 16px; align-self: stretch; }
+.rr-track em { position: absolute; top: 0; transform: translateX(-50%); font-style: normal; font-family: var(--mono); font-size: 10.5px; color: var(--ink-3); }
+.rr-ref { position: absolute; left: 50%; top: 0; bottom: 0; width: 1px; background: var(--ink-3); }
+.rr-ci { position: absolute; height: 2px; margin-top: -1px; opacity: 0.55; border-radius: 1px; }
+.rr-dot { position: absolute; width: 10px; height: 10px; margin: -5px 0 0 -5px; border-radius: 50%; box-shadow: 0 0 0 2px var(--bg); }
+.rr-vals { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; font-family: var(--mono); font-size: 12px; font-variant-numeric: tabular-nums; }
+.hbar-row.inter { grid-template-columns: minmax(0, 360px) 1fr 50px; }
+.hbar-label em { font-style: normal; color: var(--ink-3); margin: 0 3px; }
+
+.pz-wrap { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 24px; margin-top: 18px; }
+.pz ol { list-style: none; margin: 0; padding: 0; }
+.pz li + li { border-top: 1px solid var(--line); }
+.pz button { width: 100%; display: flex; justify-content: space-between; align-items: center; gap: 12px; background: none; border: 0; padding: 7px 4px; border-radius: 4px; text-align: left; cursor: pointer; }
+.pz button:hover:not(:disabled) { background: var(--panel-2); }
+.pz button:disabled { cursor: default; }
+.pz-name { font-size: 13px; }
+.pz-name small { display: block; color: var(--ink-3); font-size: 11.5px; }
+.pz-val { font-family: var(--mono); font-size: 11.5px; color: var(--ink-2); white-space: nowrap; }
+
 /* controles de MapLibre en tono oscuro */
 .maplibregl-ctrl-attrib { background: rgba(11, 13, 15, 0.7) !important; color: var(--ink-3) !important; }
 .maplibregl-ctrl-attrib a { color: var(--ink-2) !important; }
@@ -344,4 +399,6 @@ dd.down, .down { color: var(--down); }
   .stack-row { grid-template-columns: 1fr auto; gap: 4px 10px; }
   .stack-label { grid-column: 1 / -1; }
   .dots-row { grid-template-columns: minmax(0, 1fr) 1fr 44px; }
+  .rr-row { grid-template-columns: 110px 1fr 54px; gap: 8px; }
+  .hbar-row.inter { grid-template-columns: minmax(0, 1fr) 70px 44px; }
 }

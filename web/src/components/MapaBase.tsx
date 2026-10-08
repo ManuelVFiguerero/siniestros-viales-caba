@@ -29,16 +29,20 @@ interface Props {
   layers: (antesDeEtiquetas: string | undefined) => Layer[]
   onHover?: (info: PickingInfo) => void
   onClick?: (info: PickingInfo) => void
+  onCargar?: () => void
   children?: ReactNode
   mapRef?: React.Ref<MapRef>
 }
 
-export function MapaBase({ layers, onHover, onClick, children, mapRef }: Props) {
+export function MapaBase({ layers, onHover, onClick, onCargar, children, mapRef }: Props) {
   const [etiquetas, setEtiquetas] = useState<string | undefined>()
 
   const alCargar = useCallback((e: { target: maplibregl.Map }) => {
     const capas = e.target.getStyle().layers ?? []
     setEtiquetas(capas.find((l) => l.type === 'symbol')?.id)
+    onCargar?.()
+    // Solo importa el manejador vigente al cargar el mapa.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   return (

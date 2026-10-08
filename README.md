@@ -33,6 +33,7 @@ python pipeline/05_grilla_h3.py            # grilla H3 + comunas + red vial de O
 python pipeline/06_dataset_modelo.py       # tabla celda × hora 2019-2025 con todas las variables
 python pipeline/07_entrenar_modelos.py     # Poisson, Random Forest y LightGBM + SHAP (~4 min)
 python pipeline/08_exportar_riesgo_web.py  # 840 escenarios de riesgo para la web
+python pipeline/09_patrones.py             # patrones del modelo validados con los datos
 ```
 
 | Paso | Qué hace |
@@ -45,6 +46,7 @@ python pipeline/08_exportar_riesgo_web.py  # 840 escenarios de riesgo para la we
 | 06 | 175,5 M celda-horas: las 62 mil con siniestro + 5 M ceros muestreados con peso 35,1 (diseño caso-control: las sumas ponderadas reproducen la ciudad entera) |
 | 07 | Entrena con 2019–2023, evalúa con 2024–2025, explica con SHAP, reentrena el LightGBM final con todo |
 | 08 | Clima (5) × día (7) × hora (24) = 840 mapas, cuantizados a 1 byte en escala log (`riesgo.json`) |
+| 09 | Patrones del modelo (clima × hora, víctimas, zonas nocturnas, domingos, interacciones SHAP), cada uno contrastado con tasas observadas e IC 95 % (`patrones.json`, `reports/patrones.md`) |
 
 ### Clasificación del clima (`pipeline/clima.py`)
 
@@ -101,6 +103,25 @@ marca como más riesgosas. Detalle completo en `reports/metricas.md` y en la pes
 - Los tres modelos rinden parecido; LightGBM gana por poco. La regresión de Poisson es casi tan buena y
   es la que conviene para explicar efectos (razones de tasas en `reports/figuras/poisson_razones.png`).
 
+### Patrones
+
+El paso 9 busca patrones en el modelo y los contrasta con los datos: para cada condición compara
+los siniestros observados con los esperados en horas comparables (misma zona de clima, año, hora y
+tipo de día), con intervalo de confianza del 95 %. Los más fuertes:
+
+- **La lluvia cambia de signo con la hora:** −16 % de siniestros de día (7–20 h), +9 % de noche (21–6 h).
+  Una tormenta en noche hábil (21–23 h): +56 %. El modelo aprendió la misma inversión por su cuenta.
+- **Con lluvia cambia quién se lastima:** de día caen los ciclistas (−31 %) y motociclistas (−20 %),
+  porque menos gente sale; de noche suben los peatones (+32 %) y ocupantes de autos (+28 %).
+- **La primera hora de lluvia** protege menos (−6 %) que la lluvia sostenida (−14 %).
+- **Con frío (< 8 °C)** hay +6 % de siniestros, a igual mes y hora.
+- **Madrugadas de fin de semana:** pesan el doble en autopistas y avenidas del sur (Dellepiane,
+  General Paz y Roca, Fernández de la Cruz).
+- **Domingos:** los corredores laborales (Juan B. Justo, San Martín) caen a un tercio; los Bosques de
+  Palermo y la Comuna 8 conservan más de la mitad del riesgo.
+
+Detalle en la pestaña **Patrones** de la web y en `reports/patrones.md`.
+
 **Limitaciones:** el dataset registra siniestros con víctimas, no todos los choques; no hay dato de
 exposición (tránsito), así que el riesgo es por celda y no por vehículo; ERA5 tiene ~25 km de resolución.
 El modelo subestima ~15 % el total de 2024–2025 porque los siniestros crecieron frente a 2019–2023.
@@ -128,6 +149,8 @@ mapa base y las tipografías.
   escala fija (para comparar escenarios) o relativa. Clic en una celda para ver su perfil horario y su
   sensibilidad al clima. "Recorrer el día" anima las 24 horas.
 - **Histórico:** densidad de los siniestros reales con filtros de clima, gravedad, hora, año y víctima.
+- **Patrones:** hallazgos del modelo validados con los datos; cada uno lleva al mapa en el momento
+  y la zona correspondientes.
 - **Modelo:** comparación de modelos, curva de captura, SHAP y regresión de Poisson.
 
 Para desarrollar la web:
