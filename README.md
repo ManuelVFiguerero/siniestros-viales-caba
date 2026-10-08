@@ -116,6 +116,13 @@ esa condición a esa hora del día; se promedian enero, abril, julio y octubre; 
 adentro (código, estilos, datos y los 840 escenarios del modelo); solo necesita internet para el
 mapa base y las tipografías.
 
+- **En vivo (al abrir):** toma la hora actual de Buenos Aires y el clima pronosticado para esta hora
+  ([Open-Meteo](https://open-meteo.com/), clasificado con las mismas reglas que el entrenamiento) y
+  muestra el riesgo de ahora, las **zonas más peligrosas en este momento** y las próximas 12 horas.
+  Se actualiza solo: el reloj cada 20 s y el pronóstico cada 15 min. Sin conexión al pronóstico
+  asume despejado y lo avisa.
+- **Explorar:** tocar cualquier control (o una de las próximas horas) congela el mapa en ese momento
+  para consultarlo; "Volver a en vivo" retoma la hora actual.
 - **Riesgo previsto:** elegí día, hora y clima; el mapa pinta el riesgo de cada celda con la escala
   azul → amarillo → rojo (veces el promedio de la ciudad). Hexágonos, superficie continua o relieve 3D;
   escala fija (para comparar escenarios) o relativa. Clic en una celda para ver su perfil horario y su
