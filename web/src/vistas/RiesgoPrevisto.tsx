@@ -12,6 +12,7 @@ import {
   nombreCelda, posicion, totalCiudad, type Celda, type Dominio, type Riesgo,
 } from '../riesgo'
 import { interpolar, LIMITES } from '../superficie'
+import { useAhoraBA, usePronostico } from '../vivo'
 
 type Representacion = 'hex' | 'continuo' | '3d'
 type Escala = 'fija' | 'relativa'
@@ -22,10 +23,33 @@ interface Props {
 }
 
 export function RiesgoPrevisto({ riesgo, cabecera }: Props) {
-  // Escenario inicial: el ejemplo típico de la presentación, viernes 19 h con lluvia.
-  const [clima, setClima] = useState(riesgo.climas.indexOf('lluvia'))
-  const [dia, setDia] = useState(4)
-  const [hora, setHora] = useState(19)
+  // En vivo: día y hora reales de Buenos Aires y el clima pronosticado para esta hora.
+  // Al tocar cualquier control se pasa a explorar, partiendo del momento actual.
+  const [vivo, setVivo] = useState(true)
+  const [climaSel, setClimaSel] = useState(0)
+  const [diaSel, setDiaSel] = useState(0)
+  const [horaSel, setHoraSel] = useState(0)
+  const ahora = useAhoraBA()
+  const pronostico = usePronostico()
+  const horasPron = pronostico.estado === 'ok' ? pronostico.horas : []
+  const climaAhora = horasPron.find((h) => h.clave === ahora.claveHora)
+  const climaVivo = riesgo.climas.indexOf(climaAhora?.condicion ?? 'despejado')
+
+  const dia = vivo ? ahora.dia : diaSel
+  const hora = vivo ? ahora.hora : horaSel
+  const clima = vivo ? climaVivo : climaSel
+
+  const explorar = () => {
+    if (!vivo) return
+    setDiaSel(ahora.dia)
+    setHoraSel(ahora.hora)
+    setClimaSel(climaVivo)
+    setVivo(false)
+  }
+  const setDia = (d: number) => { explorar(); setDiaSel(d) }
+  const setHora = (h: number) => { explorar(); setHoraSel(h) }
+  const setClima = (c: number) => { explorar(); setClimaSel(c) }
+  const volverEnVivo = () => { setReproduciendo(false); setVivo(true) }
   const [rep, setRep] = useState<Representacion>('hex')
   const [escala, setEscala] = useState<Escala>('fija')
   const [seleccion, setSeleccion] = useState<number | null>(null)
@@ -35,11 +59,11 @@ export function RiesgoPrevisto({ riesgo, cabecera }: Props) {
 
   useEffect(() => {
     if (!reproduciendo) return
-    const t = setInterval(() => setHora((h) => (h + 1) % 24), 850)
+    const t = setInterval(() => setHoraSel((h) => (h + 1) % 24), 850)
     return () => clearInterval(t)
   }, [reproduciendo])
 
-  const valores = escenario(riesgo, clima, dia, hora)
+  const valores = useMemo(() => escenario(riesgo, clima, dia, hora), [riesgo, clima, dia, hora])
 
   // Escala fija: la misma para los 840 escenarios, así se comparan entre sí (la madrugada se ve azul).
   // Escala relativa: se estira a cada escenario para ver el patrón espacial aunque el nivel sea bajo.
@@ -57,7 +81,7 @@ export function RiesgoPrevisto({ riesgo, cabecera }: Props) {
   const top = useMemo(() => {
     const idx = Array.from(valores.keys())
     idx.sort((a, b) => valores[b] - valores[a])
-    return idx.slice(0, 8)
+    return idx.slice(0, 10)
   }, [valores])
   const umbralAlto = 5 * riesgo.media
   const celdasAltas = useMemo(() => valores.reduce((n, v) => n + (v >= umbralAlto ? 1 : 0), 0), [valores, umbralAlto])
@@ -139,16 +163,47 @@ export function RiesgoPrevisto({ riesgo, cabecera }: Props) {
 
   const ct = riesgo.clima_tipico
 
+  // Próximas 12 horas según el pronóstico, con el total esperado en la ciudad.
+  const proximas = useMemo(() => {
+    const desde = horasPron.findIndex((h) => h.clave === ahora.claveHora)
+    if (desde < 0) return []
+    return horasPron.slice(desde, desde + 12).map((h) => {
+      const c = riesgo.climas.indexOf(h.condicion)
+      return { ...h, c, total: totalCiudad(riesgo, c, h.dia, h.hora) }
+    })
+  }, [horasPron, ahora.claveHora, riesgo])
+  const maxProx = Math.max(...proximas.map((p) => p.total), 0.001)
+
+  const textoClimaAhora =
+    pronostico.estado === 'cargando'
+      ? 'Consultando el clima…'
+      : climaAhora
+        ? `${fmtNum(climaAhora.precipitacion, 1)} mm/h · ${fmtNum(climaAhora.temperatura, 0)} °C · ráfagas ${fmtNum(climaAhora.rafagas, 0)} km/h`
+        : 'Sin datos de clima en este momento: se asume despejado'
+  const reloj = `${String(ahora.hora).padStart(2, '0')}:${String(ahora.minuto).padStart(2, '0')}`
+
   return (
     <>
       <aside className="side">
         {cabecera}
         <div className="side-body">
           <section className="block">
-            <p className="kicker">Escenario</p>
+            <div className="kicker-row">
+              {vivo ? (
+                <p className="kicker live"><i aria-hidden />En vivo · Buenos Aires</p>
+              ) : (
+                <p className="kicker">Explorando otro momento</p>
+              )}
+              {!vivo && (
+                <button className="play live-btn" onClick={volverEnVivo}>
+                  <i aria-hidden />Volver a en vivo
+                </button>
+              )}
+            </div>
             <p className="scenario">
-              {DIAS[dia]}, {hhmm(hora)} <span className="scenario-sep">·</span> {NOMBRE_CLIMA[riesgo.climas[clima]]}
+              {DIAS[dia]}, {vivo ? reloj : hhmm(hora)} <span className="scenario-sep">·</span> {NOMBRE_CLIMA[riesgo.climas[clima]]}
             </p>
+            {vivo && <p className="hint flush scenario-sub">{textoClimaAhora}</p>}
             <dl className="kpis">
               <div>
                 <dt>Siniestros esperados en la ciudad</dt>
@@ -171,6 +226,60 @@ export function RiesgoPrevisto({ riesgo, cabecera }: Props) {
           </section>
 
           <section className="block">
+            <p className="kicker">{vivo ? 'Zonas más peligrosas ahora' : 'Zonas más peligrosas en este escenario'}</p>
+            <ol className="ranking">
+              {top.map((i, k) => {
+                const c = riesgo.celdas[i]
+                return (
+                  <li key={c.id}>
+                    <button className={seleccion === i ? 'on' : ''} onClick={() => irA(i)}>
+                      <span className="r-pos">{k + 1}</span>
+                      <span className="r-name">
+                        {nombreCelda(c)}
+                        <small>Comuna {c.comuna} · {fmtCadaHoras(valores[i])}</small>
+                      </span>
+                      <span className="r-val">
+                        <i style={{ background: colorCss(t(i)) }} />
+                        {fmtIndice(valores[i] / riesgo.media)}
+                      </span>
+                    </button>
+                  </li>
+                )
+              })}
+            </ol>
+          </section>
+
+          {proximas.length > 0 && (
+            <section className="block">
+              <div className="kicker-row">
+                <p className="kicker">Próximas horas</p>
+                <span className="mono-note">siniestros esperados</span>
+              </div>
+              <ol className="forecast">
+                {proximas.map((p, k) => (
+                  <li key={p.clave}>
+                    <button
+                      className={!vivo && p.dia === dia && p.hora === hora && p.c === clima ? 'on' : ''}
+                      onClick={() => { explorar(); setDiaSel(p.dia); setHoraSel(p.hora); setClimaSel(p.c) }}
+                    >
+                      <span className="f-hora">{k === 0 ? 'Ahora' : hhmm(p.hora)}</span>
+                      <span className="f-clima">{NOMBRE_CLIMA[p.condicion]}{p.precipitacion >= 0.1 ? ` · ${fmtNum(p.precipitacion, 1)} mm` : ''}</span>
+                      <span className="f-track"><span style={{ width: `${(p.total / maxProx) * 100}%` }} /></span>
+                      <span className="f-val">{fmtNum(p.total, 2)}</span>
+                    </button>
+                  </li>
+                ))}
+              </ol>
+              <p className="hint">Pronóstico horario de Open-Meteo, clasificado con las mismas reglas que el entrenamiento. Tocá una hora para verla en el mapa.</p>
+            </section>
+          )}
+
+          <section className="block group-head">
+            <p className="kicker">Explorar otro momento</p>
+            <p className="hint flush">Elegí día, hora o clima. El mapa deja de seguir la hora actual hasta que vuelvas a en vivo.</p>
+          </section>
+
+          <section className="block">
             <p className="kicker">Día de la semana</p>
             <div className="seg seg-7" role="radiogroup" aria-label="Día de la semana">
               {DIAS_CORTO.map((d, i) => (
@@ -184,7 +293,7 @@ export function RiesgoPrevisto({ riesgo, cabecera }: Props) {
           <section className="block">
             <div className="kicker-row">
               <p className="kicker">Hora</p>
-              <button className={`play${reproduciendo ? ' on' : ''}`} onClick={() => setReproduciendo((r) => !r)} aria-label={reproduciendo ? 'Pausar' : 'Recorrer las 24 horas'}>
+              <button className={`play${reproduciendo ? ' on' : ''}`} onClick={() => { explorar(); setReproduciendo((r) => !r) }} aria-label={reproduciendo ? 'Pausar' : 'Recorrer las 24 horas'}>
                 {reproduciendo ? (
                   <svg viewBox="0 0 12 12" width="10" height="10"><rect x="2" y="1.5" width="2.6" height="9" fill="currentColor" /><rect x="7.4" y="1.5" width="2.6" height="9" fill="currentColor" /></svg>
                 ) : (
@@ -238,40 +347,19 @@ export function RiesgoPrevisto({ riesgo, cabecera }: Props) {
             </p>
           </section>
 
-          <section className="block">
-            <p className="kicker">Zonas de mayor riesgo en este escenario</p>
-            <ol className="ranking">
-              {top.map((i, k) => {
-                const c = riesgo.celdas[i]
-                return (
-                  <li key={c.id}>
-                    <button className={seleccion === i ? 'on' : ''} onClick={() => irA(i)}>
-                      <span className="r-pos">{k + 1}</span>
-                      <span className="r-name">
-                        {nombreCelda(c)}
-                        <small>Comuna {c.comuna} · {fmtCadaHoras(valores[i])}</small>
-                      </span>
-                      <span className="r-val">
-                        <i style={{ background: colorCss(t(i)) }} />
-                        {fmtIndice(valores[i] / riesgo.media)}
-                      </span>
-                    </button>
-                  </li>
-                )
-              })}
-            </ol>
-          </section>
         </div>
         <footer className="side-foot">
-          Modelo LightGBM (Poisson) sobre {fmtNum(riesgo.n_celdas)} celdas H3 de ~350 m. Valores promediados en enero, abril, julio y octubre; día no feriado.
+          Modelo LightGBM (Poisson) sobre {fmtNum(riesgo.n_celdas)} celdas H3 de ~350 m, entrenado con 2019–2025. Supone día no feriado y promedia las estaciones del año.
         </footer>
       </aside>
 
       <main className="stage">
         <MapaBase mapRef={mapRef} layers={capas} onHover={alPasar} onClick={alClic} />
-        <div className="stamp" aria-hidden>
+        <div className={`stamp${vivo ? ' is-live' : ''}`} aria-hidden>
+          {vivo && <i className="live-dot" />}
+          {vivo && <span>En vivo</span>}
           <span>{DIAS_CORTO[dia]}</span>
-          <strong>{hhmm(hora)}</strong>
+          <strong>{vivo ? reloj : hhmm(hora)}</strong>
           <span>{NOMBRE_CLIMA[riesgo.climas[clima]]}</span>
         </div>
         <Leyenda dominio={dominio} media={riesgo.media} relativa={escala === 'relativa'} />
