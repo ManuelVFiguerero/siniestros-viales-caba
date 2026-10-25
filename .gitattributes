@@ -1,0 +1,4 @@
+* text=auto
+*.xlsx binary
+*.png binary
+*.geojson text eol=lf

@@ -402,3 +402,134 @@ dd.down, .down { color: var(--down); }
   .rr-row { grid-template-columns: 110px 1fr 54px; gap: 8px; }
   .hbar-row.inter { grid-template-columns: minmax(0, 1fr) 70px 44px; }
 }
+
+/* =====================================================================
+   Ambiente: clima en pantalla, sonido, modo presentación e historia
+   ===================================================================== */
+
+/* ---------- capa de clima sobre el mapa ---------- */
+.clima-fx { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.clima-fx > * { position: absolute; inset: 0; transition: opacity 1.6s ease; }
+.fx-canvas { width: 100%; height: 100%; }
+.fx-noche { background: radial-gradient(ellipse 120% 95% at 50% 42%, rgba(10, 18, 48, 0.12) 0%, rgba(6, 10, 30, 0.55) 70%, rgba(2, 4, 14, 0.85) 100%); mix-blend-mode: multiply; }
+.fx-dorado { background: linear-gradient(180deg, rgba(255, 150, 70, 0.2) 0%, rgba(255, 96, 70, 0.06) 35%, transparent 60%); mix-blend-mode: screen; }
+.fx-sol { background: radial-gradient(circle at 86% 4%, rgba(255, 238, 196, 0.5) 0%, rgba(255, 200, 120, 0.16) 20%, transparent 48%); mix-blend-mode: screen; }
+.fx-rayos {
+  position: absolute; width: 240vmax; height: 240vmax; left: calc(86% - 120vmax); top: calc(4% - 120vmax);
+  background: repeating-conic-gradient(from 0deg, rgba(255, 228, 175, 0.07) 0deg 3.5deg, transparent 3.5deg 13deg);
+  -webkit-mask-image: radial-gradient(circle, #000 0%, transparent 28%); mask-image: radial-gradient(circle, #000 0%, transparent 28%);
+  animation: fx-girar 140s linear infinite;
+}
+.fx-nubes i, .fx-niebla i { position: absolute; display: block; border-radius: 50%; }
+.fx-nubes i { width: 70vmax; height: 46vmax; background: radial-gradient(closest-side, rgba(14, 18, 24, 0.55), rgba(14, 18, 24, 0.25) 55%, transparent); filter: blur(24px); animation: fx-deriva 70s ease-in-out infinite alternate; }
+.fx-nubes i:nth-child(1) { left: -20vmax; top: -16vmax; }
+.fx-nubes i:nth-child(2) { left: 30%; top: 20%; animation-duration: 90s; animation-delay: -30s; }
+.fx-nubes i:nth-child(3) { left: 55%; top: -20vmax; animation-duration: 110s; animation-delay: -60s; }
+.fx-nubes i:nth-child(4) { left: -10%; top: 55%; animation-duration: 80s; animation-delay: -15s; }
+.fx-niebla i { width: 140%; height: 70%; left: -20%; background: radial-gradient(closest-side, rgba(170, 182, 196, 0.42), rgba(170, 182, 196, 0.16) 60%, transparent); filter: blur(30px); animation: fx-deriva 50s ease-in-out infinite alternate; }
+.fx-niebla i:nth-child(1) { top: -5%; }
+.fx-niebla i:nth-child(2) { top: 40%; animation-duration: 64s; animation-direction: alternate-reverse; }
+.fx-mojado { background: linear-gradient(180deg, rgba(8, 12, 20, 0.3), rgba(8, 12, 20, 0.16)); }
+.fx-flash { background: rgb(226, 232, 255); opacity: 0; mix-blend-mode: screen; transition: none; }
+.fx-sutil .fx-canvas { opacity: 0.9; }
+@keyframes fx-girar { to { transform: rotate(360deg); } }
+@keyframes fx-deriva { from { transform: translate3d(-6%, -2%, 0) scale(1); } to { transform: translate3d(8%, 4%, 0) scale(1.12); } }
+@media (prefers-reduced-motion: reduce) { .fx-rayos, .fx-nubes i, .fx-niebla i { animation: none; } }
+
+/* ---------- botón de sonido ---------- */
+.sound-btn { display: inline-flex; align-items: center; gap: 7px; background: rgba(11, 13, 15, 0.6); border: 1px solid var(--line-2); color: var(--ink-3); border-radius: 999px; padding: 5px 11px 5px 9px; font-size: 12px; cursor: pointer; transition: color 0.15s, border-color 0.15s; }
+.sound-btn:hover { color: var(--ink); border-color: var(--ink-3); }
+.sound-btn.on { color: var(--ink); }
+.sound-btn.compact { margin-left: auto; padding: 4px 8px; }
+.sound-btn.compact span { display: none; }
+
+/* ---------- modo presentación (tecla P en Riesgo) ---------- */
+.pres-toggle { position: absolute; right: 16px; bottom: 34px; display: inline-flex; gap: 8px; align-items: center; background: rgba(11, 13, 15, 0.85); border: 1px solid var(--line-2); color: var(--ink-2); border-radius: 6px; padding: 6px 10px; font-size: 12px; cursor: pointer; }
+.pres-toggle:hover { color: var(--ink); }
+kbd { font-family: var(--mono); font-size: 10.5px; border: 1px solid var(--line-2); border-bottom-width: 2px; border-radius: 4px; padding: 0 5px; color: var(--ink-2); }
+body.modo-presentacion .shell { grid-template-columns: 0 1fr; }
+body.modo-presentacion .side { visibility: hidden; }
+body.modo-presentacion .stamp { top: 24px; left: 24px; padding: 12px 18px; font-size: 16px; gap: 14px; }
+body.modo-presentacion .stamp strong { font-size: 34px; }
+body.modo-presentacion .legend { left: auto; right: 24px; bottom: 80px; }
+.pres-hud { position: absolute; left: 24px; bottom: 28px; display: flex; flex-direction: column; gap: 14px; max-width: min(720px, calc(100% - 380px)); }
+.pres-dato { display: flex; flex-direction: column; gap: 2px; text-shadow: 0 2px 16px rgba(0, 0, 0, 0.8); }
+.pres-dato span { font-family: var(--mono); font-size: 13px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-2); }
+.pres-dato strong { font-family: var(--mono); font-size: 72px; font-weight: 500; line-height: 1; letter-spacing: -0.04em; }
+.pres-dato em { font-style: normal; font-family: var(--mono); font-size: 22px; color: var(--ink-2); }
+.pres-climas { display: flex; flex-wrap: wrap; gap: 8px; }
+.pres-climas button { display: inline-flex; align-items: center; gap: 8px; background: rgba(11, 13, 15, 0.82); border: 1px solid var(--line-2); color: var(--ink-2); border-radius: 999px; padding: 8px 16px 8px 10px; font-size: 16px; cursor: pointer; backdrop-filter: blur(6px); }
+.pres-climas button.on { background: var(--ink); color: #0b0d0f; border-color: var(--ink); }
+.pres-climas button.on kbd { color: #0b0d0f; border-color: #0b0d0f; }
+.pres-ayuda { margin: 0; font-family: var(--mono); font-size: 11.5px; color: var(--ink-3); }
+
+/* ---------- historia (home) ---------- */
+.historia { position: fixed; inset: 0; z-index: 10; background: #050608; overflow: hidden; user-select: none; }
+.h-mapa { position: absolute; inset: 0; }
+.h-mapa .maplibregl-ctrl-attrib { opacity: 0.55; }
+.h-velo { position: absolute; inset: 0; pointer-events: none; background: linear-gradient(90deg, rgba(5, 6, 8, 0.82) 0%, rgba(5, 6, 8, 0.45) 34%, transparent 58%); transition: opacity 1.2s; }
+.acto-portada .h-velo { background: radial-gradient(ellipse at 50% 55%, rgba(5, 6, 8, 0.55), rgba(5, 6, 8, 0.92) 75%); }
+.acto-ahora .h-velo { background: linear-gradient(90deg, rgba(5, 6, 8, 0.85) 0%, rgba(5, 6, 8, 0.5) 40%, transparent 65%); }
+
+.h-barra { position: absolute; top: 0; left: 0; right: 0; display: flex; justify-content: space-between; align-items: center; padding: 18px 28px; z-index: 2; }
+.h-barra-der { display: flex; gap: 10px; align-items: center; }
+.h-saltar { background: none; border: 1px solid var(--line-2); color: var(--ink-2); border-radius: 999px; padding: 5px 14px; font-size: 12.5px; cursor: pointer; }
+.h-saltar:hover { color: var(--ink); border-color: var(--ink-3); }
+
+.h-panel { position: absolute; left: clamp(24px, 6vw, 96px); top: 50%; transform: translateY(-46%); width: min(560px, calc(100% - 140px)); z-index: 2; text-shadow: 0 2px 22px rgba(0, 0, 0, 0.65); }
+.h-kicker { margin: 0 0 16px; display: flex; align-items: center; gap: 9px; font-family: var(--mono); font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-2); }
+.h-titulo { margin: 0 0 22px; font-size: clamp(32px, 4.4vw, 58px); font-weight: 600; line-height: 1.04; letter-spacing: -0.03em; text-wrap: balance; }
+.h-cifra { margin: 0 0 18px; display: flex; flex-direction: column; gap: 4px; }
+.h-num { font-family: var(--mono); font-size: clamp(56px, 8vw, 104px); font-weight: 500; line-height: 0.95; letter-spacing: -0.05em; font-variant-numeric: tabular-nums; }
+.h-num.up { color: #ff7a52; }
+.h-num.down { color: #8cc4ea; }
+.h-num-nota { color: var(--ink-2); font-size: 15px; max-width: 44ch; }
+.h-cuerpo { margin: 0 0 14px; color: var(--ink-2); font-size: clamp(16px, 1.35vw, 19px); line-height: 1.5; max-width: 46ch; }
+.h-cuerpo b { color: var(--ink); font-weight: 600; font-family: var(--mono); font-size: 0.95em; }
+.h-nota { margin: 0; padding: 10px 14px; border-left: 2px solid var(--up); background: rgba(11, 13, 15, 0.6); font-size: 15px; color: var(--ink); }
+.h-apuesta { display: flex; gap: 12px; margin-top: 8px; }
+.h-apuesta button { flex: 1; background: rgba(11, 13, 15, 0.7); border: 1px solid var(--line-2); color: var(--ink); border-radius: 10px; padding: 16px 18px; font-size: 18px; font-weight: 600; cursor: pointer; transition: transform 0.15s, background 0.15s, border-color 0.15s; }
+.h-apuesta button:hover { transform: translateY(-2px); border-color: var(--ink-3); }
+.h-apuesta button.on { background: var(--ink); color: #0b0d0f; border-color: var(--ink); }
+.h-top { margin: 6px 0 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; counter-reset: top; }
+.h-top li { counter-increment: top; display: flex; gap: 12px; align-items: baseline; font-size: 15px; }
+.h-top li::before { content: counter(top); font-family: var(--mono); color: #ff7a52; width: 14px; }
+.h-top small { color: var(--ink-3); font-size: 12px; }
+.h-shap { display: flex; gap: 3px; margin: 4px 0 16px; height: 34px; font-family: var(--mono); font-size: 12px; }
+.h-shap span { display: flex; align-items: center; padding: 0 10px; background: rgba(235, 233, 228, 0.12); border-radius: 4px; white-space: nowrap; overflow: hidden; }
+.h-shap span.is-clima { background: rgba(116, 173, 209, 0.35); color: var(--ink); }
+.h-acciones { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 8px; }
+.h-primario { background: var(--ink); color: #0b0d0f; border: 0; border-radius: 999px; padding: 12px 22px; font-size: 15px; font-weight: 600; cursor: pointer; transition: transform 0.15s; }
+.h-primario:hover { transform: translateY(-1px); }
+.h-secundario { background: rgba(11, 13, 15, 0.6); border: 1px solid var(--line-2); color: var(--ink-2); border-radius: 999px; padding: 12px 20px; font-size: 15px; cursor: pointer; }
+.h-secundario:hover { color: var(--ink); }
+.h-ayuda { margin: 22px 0 0; font-family: var(--mono); font-size: 12px; color: var(--ink-3); }
+
+.h-portada { left: 50%; transform: translate(-50%, -50%); width: min(820px, calc(100% - 48px)); text-align: center; }
+.h-portada .h-kicker, .h-portada .h-acciones { justify-content: center; }
+.h-portada .h-titulo { font-size: clamp(40px, 6.4vw, 88px); }
+.h-portada .h-cuerpo { margin-left: auto; margin-right: auto; }
+
+.h-actos { position: absolute; right: 28px; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 14px; z-index: 2; }
+.h-actos button { position: relative; width: 12px; height: 12px; padding: 0; border-radius: 50%; border: 1.5px solid var(--ink-3); background: transparent; cursor: pointer; transition: background 0.3s, border-color 0.3s, transform 0.3s; }
+.h-actos button.visto { background: var(--ink-3); }
+.h-actos button.on { background: var(--ink); border-color: var(--ink); transform: scale(1.25); }
+.h-actos button span { position: absolute; right: 22px; top: 50%; transform: translateY(-50%); white-space: nowrap; font-size: 12px; color: var(--ink-2); opacity: 0; transition: opacity 0.2s; pointer-events: none; }
+.h-actos button:hover span, .h-actos button.on span { opacity: 1; }
+.acto-portada .h-actos { opacity: 0; pointer-events: none; }
+
+.h-seguir { position: absolute; left: 50%; bottom: 26px; transform: translateX(-50%); display: inline-flex; flex-direction: column; align-items: center; gap: 4px; background: none; border: 0; color: var(--ink-3); font-family: var(--mono); font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; cursor: pointer; z-index: 2; animation: h-latir 2.4s ease-in-out infinite; }
+.h-seguir:hover { color: var(--ink); }
+@keyframes h-latir { 0%, 100% { transform: translate(-50%, 0); } 50% { transform: translate(-50%, 5px); } }
+@media (prefers-reduced-motion: reduce) { .h-seguir { animation: none; } }
+
+@media (max-width: 760px) {
+  .h-barra { padding: 14px 16px; }
+  .h-barra .brand-sub, .h-saltar { display: none; }
+  .h-panel { left: 16px; right: 16px; width: auto; top: auto; bottom: 64px; transform: none; }
+  .h-portada { left: 16px; right: 16px; top: 50%; bottom: auto; transform: translateY(-50%); width: auto; }
+  .h-velo, .acto-ahora .h-velo { background: linear-gradient(0deg, rgba(5, 6, 8, 0.92) 0%, rgba(5, 6, 8, 0.5) 50%, transparent 75%); }
+  .h-actos { right: 10px; gap: 10px; }
+  .h-actos button span { display: none; }
+  .pres-toggle { display: none; }
+}

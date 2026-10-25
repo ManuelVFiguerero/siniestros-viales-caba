@@ -13,6 +13,9 @@ import {
 } from '../riesgo'
 import { interpolar, LIMITES } from '../superficie'
 import { useAhoraBA, usePronostico } from '../vivo'
+import { EfectoClima } from '../ambiente/EfectoClima'
+import { intensidadDeLluvia, luzDelDia } from '../ambiente/luz'
+import { trueno, useAmbienteSonoro, useSonido } from '../ambiente/Sonido'
 
 type Representacion = 'hex' | 'continuo' | '3d'
 type Escala = 'fija' | 'relativa'
@@ -132,6 +135,8 @@ export function RiesgoPrevisto({ riesgo, cabecera, inicial }: Props) {
         material: { ambient: 0.55, diffuse: 0.6, shininess: 24 },
         ...debajoDe(es3d ? undefined : antesDe),
         updateTriggers: { getFillColor: [...disparador, es3d], getElevation: disparador },
+        // Los cambios de hora, día o clima se funden en vez de saltar.
+        transitions: { getFillColor: { duration: 650 }, getElevation: { duration: 900 } },
       }),
       new PolygonLayer<Celda>({
         id: 'seleccion',
@@ -153,6 +158,45 @@ export function RiesgoPrevisto({ riesgo, cabecera, inicial }: Props) {
   }, [rep])
 
   // Al llegar desde un patrón con una celda elegida, el mapa vuela hasta ella cuando termina de cargar.
+  // ---------- ambiente: clima visible, luz del día, sonido y modo presentación ----------
+  const nombreClima = riesgo.climas[clima]
+  const intensidadVivo = vivo && climaAhora ? intensidadDeLluvia(climaAhora.precipitacion) : undefined
+  const luz = useMemo(() => luzDelDia(hora), [hora])
+  const maxHora = Math.max(...porHora, 1e-6)
+  useAmbienteSonoro({ clima: nombreClima, hora, transito: porHora[hora] / maxHora, lluvia: intensidadVivo })
+
+  const [presentando, setPresentando] = useState(false)
+  const { activo: sonidoActivo, encender, apagar } = useSonido()
+  useEffect(() => {
+    document.body.classList.toggle('modo-presentacion', presentando)
+    return () => document.body.classList.remove('modo-presentacion')
+  }, [presentando])
+  useEffect(() => {
+    const alTeclear = (e: KeyboardEvent) => {
+      const el = e.target as HTMLElement
+      if (el.closest('input, select, textarea') || e.metaKey || e.ctrlKey || e.altKey) return
+      const k = e.key.toLowerCase()
+      if (k === 'p') setPresentando((p) => !p)
+      else if (k === 'escape') setPresentando(false)
+      else if (k === 'm') {
+        if (sonidoActivo) apagar()
+        else void encender()
+      }
+      else if (k >= '1' && k <= String(riesgo.climas.length)) setClima(Number(k) - 1)
+      else if (k === 'arrowright' || k === 'arrowleft') {
+        e.preventDefault()
+        setReproduciendo(false)
+        setHora((hora + (k === 'arrowright' ? 1 : 23)) % 24)
+      } else if (k === ' ' && presentando) {
+        e.preventDefault()
+        explorar()
+        setReproduciendo((r) => !r)
+      }
+    }
+    window.addEventListener('keydown', alTeclear)
+    return () => window.removeEventListener('keydown', alTeclear)
+  })
+
   const alCargarMapa = () => {
     if (seleccion === null) return
     const [lon, lat] = riesgo.celdas[seleccion].c
@@ -366,7 +410,8 @@ export function RiesgoPrevisto({ riesgo, cabecera, inicial }: Props) {
       </aside>
 
       <main className="stage">
-        <MapaBase mapRef={mapRef} layers={capas} onHover={alPasar} onClick={alClic} onCargar={alCargarMapa} />
+        <MapaBase mapRef={mapRef} layers={capas} onHover={alPasar} onClick={alClic} onCargar={alCargarMapa} luz={luz} edificios={rep === '3d'} />
+        <EfectoClima clima={nombreClima} hora={hora} intensidad={intensidadVivo} fuerza={presentando ? 'pleno' : 'sutil'} vidrio={presentando} onRelampago={trueno} />
         <div className={`stamp${vivo ? ' is-live' : ''}`} aria-hidden>
           {vivo && <i className="live-dot" />}
           {vivo && <span>En vivo</span>}
@@ -375,6 +420,28 @@ export function RiesgoPrevisto({ riesgo, cabecera, inicial }: Props) {
           <span>{NOMBRE_CLIMA[riesgo.climas[clima]]}</span>
         </div>
         <Leyenda dominio={dominio} media={riesgo.media} relativa={escala === 'relativa'} />
+        {presentando && (
+          <div className="pres-hud">
+            <div className="pres-dato">
+              <span>Siniestros esperados en la ciudad</span>
+              <strong>{fmtNum(totalActual, 2)}</strong>
+              <em className={vsDespejado > 0.005 ? 'up' : vsDespejado < -0.005 ? 'down' : ''}>
+                {nombreClima === 'despejado' ? 'base' : `${vsDespejado > 0 ? '+' : ''}${fmtNum(vsDespejado * 100, 0)} % vs. despejado`}
+              </em>
+            </div>
+            <div className="pres-climas">
+              {riesgo.climas.map((c, i) => (
+                <button key={c} className={clima === i ? 'on' : ''} onClick={() => setClima(i)}>
+                  <kbd>{i + 1}</kbd>{NOMBRE_CLIMA[c]}
+                </button>
+              ))}
+            </div>
+            <p className="pres-ayuda">← → hora · 1–5 clima · espacio recorre el día · M sonido · P salir</p>
+          </div>
+        )}
+        <button className="pres-toggle" onClick={() => setPresentando((p) => !p)} title="Modo presentación (P)">
+          {presentando ? 'Salir de presentación' : 'Presentar'} <kbd>P</kbd>
+        </button>
         {hover && hover.i !== seleccion && (
           <div className="map-tip" style={{ left: hover.x, top: hover.y }}>
             <strong>{nombreCelda(riesgo.celdas[hover.i])}</strong>
