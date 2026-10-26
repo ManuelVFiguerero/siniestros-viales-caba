@@ -41,8 +41,14 @@ function guardar(s: Sesion) {
   }
 }
 
+/**
+ * La página de voto tiene que poder abrirse desde un celular. Si la presentación corre en una dirección
+ * pública o de la red local (npm run dev -- --host), se usa esa; si corre en localhost o con doble clic
+ * (file://), el QR apunta a la copia publicada en GitHub Pages.
+ */
 export function urlDeVoto(tema: string): string {
-  const base = location.protocol.startsWith('http') ? new URL('./', location.href).href : WEB_PUBLICA
+  const local = /^(localhost|127\.|\[?::1\]?$|0\.0\.0\.0)/.test(location.hostname)
+  const base = location.protocol.startsWith('http') && !local ? new URL('./', location.href).href : WEB_PUBLICA
   return `${base}votar.html#${tema}`
 }
 
