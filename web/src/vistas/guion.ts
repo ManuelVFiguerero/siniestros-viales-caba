@@ -1,0 +1,115 @@
+// Guion de la historia: lo que ve el público (nombre) y lo que lee el orador en la ventana de notas.
+export type IdActo = 'portada' | 'ciudad' | 'pregunta' | 'metodo' | 'sol' | 'lluvia' | 'noche' | 'tormenta' | 'acierta' | 'ahora'
+
+export interface Guion {
+  id: IdActo
+  nombre: string
+  /** Tiempo sugerido en segundos. */
+  segundos: number
+  notas: string[]
+}
+
+export const GUION: Guion[] = [
+  {
+    id: 'portada',
+    nombre: 'Portada',
+    segundos: 20,
+    notas: [
+      'Presentarse: nombres del grupo y materia.',
+      'Lanzar la pregunta en voz alta, sin responderla: "¿La lluvia nos hace más cuidadosos?".',
+      'Tocar "Empezar con sonido" (el audio solo arranca con un clic).',
+    ],
+  },
+  {
+    id: 'ciudad',
+    nombre: 'La ciudad',
+    segundos: 30,
+    notas: [
+      'Dejar que caigan los puntos unos segundos en silencio.',
+      'Fuente: BA Data, siniestros con víctimas 2019–2025. 65.818 registros, 62.737 con coordenadas y hora válidas.',
+      'Señalar que el dibujo de la ciudad aparece solo: avenidas y autopistas concentran los choques.',
+    ],
+  },
+  {
+    id: 'pregunta',
+    nombre: 'La pregunta',
+    segundos: 60,
+    notas: [
+      'Pedir que escaneen el QR y voten. Esperar a que se muevan las barras.',
+      'Mientras votan: cruzamos cada siniestro con el clima horario de Open-Meteo (reanálisis ERA5) del punto más cercano.',
+      'No revelar nada todavía. Avanzar cuando la votación se estabilice.',
+    ],
+  },
+  {
+    id: 'metodo',
+    nombre: 'Cómo lo medimos',
+    segundos: 45,
+    notas: [
+      'El error típico: contar choques por clima. "Despejado" siempre gana porque es lo más frecuente.',
+      'Estandarización indirecta: cada hora con lluvia se compara con horas despejadas iguales (misma zona, año, hora del día y tipo de día).',
+      'Razón observados / esperados, con intervalo de confianza del 95 %. Menos de 1 = menos choques que lo esperable.',
+    ],
+  },
+  {
+    id: 'sol',
+    nombre: 'Sale el sol',
+    segundos: 25,
+    notas: [
+      'Mapa del modelo LightGBM: riesgo previsto por celda H3 de ~350 m para un martes a las 14 h despejado.',
+      'Rojo = varias veces el promedio de la ciudad. Es la línea de base para comparar.',
+    ],
+  },
+  {
+    id: 'lluvia',
+    nombre: 'Empieza a llover',
+    segundos: 40,
+    notas: [
+      'Revelar el resultado de la votación (aparece abajo de la cifra).',
+      'De día con lluvia hay 16 % menos siniestros. IC 95 %: 13 % a 18 % menos.',
+      'Explicación: baja la exposición. Caen ciclistas (−31 %) y motociclistas (−20 %): sale menos gente, no son calles más seguras.',
+    ],
+  },
+  {
+    id: 'noche',
+    nombre: 'Se hace de noche',
+    segundos: 40,
+    notas: [
+      'Dejar correr la transición de las 14 a las 22 h: el giro de la historia.',
+      'De noche con lluvia: +9 %. El efecto cambia de signo.',
+      'Suben peatones (+32 %) y ocupantes de autos (+28 %): tránsito imprescindible, poca visibilidad, asfalto mojado.',
+      'El modelo aprendió esta inversión solo, sin que se la indiquemos.',
+    ],
+  },
+  {
+    id: 'tormenta',
+    nombre: 'Tormenta',
+    segundos: 35,
+    notas: [
+      'Martes 22 h con tormenta: +56 % (35 observados contra 22,5 esperados). La combinación de clima más riesgosa de la semana.',
+      'Intervalo amplio porque hay pocos casos: decirlo.',
+      'Nombrar las 3 zonas que aparecen en pantalla.',
+    ],
+  },
+  {
+    id: 'acierta',
+    nombre: '¿El modelo acierta?',
+    segundos: 40,
+    notas: [
+      'Validación temporal: entrenado con 2019–2023, evaluado con 2024–2025, que el modelo nunca vio.',
+      'El 10 % de zonas-hora que marca como más riesgosas concentra el 40 % de los siniestros reales.',
+      'Contra el mapa clásico de puntos calientes (33 %), sumar hora, día y clima mejora la captura.',
+      'Comparar con Poisson y Random Forest si preguntan: rinden parecido; LightGBM gana por poco.',
+    ],
+  },
+  {
+    id: 'ahora',
+    nombre: 'Ahora mismo',
+    segundos: 45,
+    notas: [
+      'Clima real de este momento según el pronóstico. Si llueve afuera, llueve en la pantalla.',
+      'Cierre: el clima pesa 4 % del modelo; el dónde (57 %) y el cuándo (39 %) mandan. El clima no crea el riesgo, lo cambia de horario.',
+      'Barra espaciadora: mapa libre para responder preguntas ("¿y mi barrio?"). Buscar la calle arriba a la derecha.',
+      'Limitaciones si queda tiempo: sin datos de tránsito (exposición), ERA5 de ~25 km, solo siniestros con víctimas.',
+    ],
+  },
+]

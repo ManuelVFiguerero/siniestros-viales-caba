@@ -117,7 +117,8 @@ export function RiesgoPrevisto({ riesgo, cabecera, inicial }: Props) {
     const es3d = rep === '3d'
     return [
       new PolygonLayer<Celda>({
-        id: 'riesgo-hex',
+        // Capa distinta en 3D: la transición de colores no puede mezclar la geometría plana con la extruida.
+        id: es3d ? 'riesgo-hex-3d' : 'riesgo-hex',
         data: riesgo.celdas,
         getPolygon: (c) => c.p,
         getFillColor: (_, { index }) => {
@@ -212,10 +213,10 @@ export function RiesgoPrevisto({ riesgo, cabecera, inicial }: Props) {
   // deck.gl vuelve a disparar onHover cada vez que cambian las capas: solo se actualiza el estado si
   // de verdad cambió, si no el mapa y la vista se re-renderizan en bucle.
   const alPasar = (info: PickingInfo) => {
-    const n = info.layer?.id === 'riesgo-hex' && info.index >= 0 ? { i: info.index, x: info.x, y: info.y } : null
+    const n = info.layer?.id.startsWith('riesgo-hex') && info.index >= 0 ? { i: info.index, x: info.x, y: info.y } : null
     setHover((h) => (h === n || (h && n && h.i === n.i && h.x === n.x && h.y === n.y) ? h : n))
   }
-  const alClic = (info: PickingInfo) => setSeleccion(info.layer?.id === 'riesgo-hex' && info.index >= 0 ? info.index : null)
+  const alClic = (info: PickingInfo) => setSeleccion(info.layer?.id.startsWith('riesgo-hex') && info.index >= 0 ? info.index : null)
 
   const ct = riesgo.clima_tipico
 

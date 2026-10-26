@@ -7,6 +7,7 @@ import { Historico } from './vistas/Historico'
 import { ModeloInforme } from './vistas/ModeloInforme'
 import { Patrones, type DestinoMapa } from './vistas/Patrones'
 import { Historia } from './vistas/Historia'
+import { Notas } from './vistas/Notas'
 import { BotonSonido, SonidoProvider } from './ambiente/Sonido'
 
 type Pestania = 'inicio' | 'riesgo' | 'patrones' | 'historico' | 'modelo'
@@ -33,6 +34,8 @@ function pestaniaInicial(): Pestania {
 }
 
 export default function App() {
+  // Ventana de notas del orador: no carga datos ni mapa.
+  if (window.location.hash === '#notas') return <Notas />
   return (
     <SonidoProvider>
       <Contenido />

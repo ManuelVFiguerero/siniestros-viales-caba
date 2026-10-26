@@ -34,6 +34,7 @@ python pipeline/06_dataset_modelo.py       # tabla celda × hora 2019-2025 con t
 python pipeline/07_entrenar_modelos.py     # Poisson, Random Forest y LightGBM + SHAP (~4 min)
 python pipeline/08_exportar_riesgo_web.py  # 840 escenarios de riesgo para la web
 python pipeline/09_patrones.py             # patrones del modelo validados con los datos
+python pipeline/10_capas_web.py            # recorridos de avenidas (tránsito animado) y comunas (mapa sin internet)
 ```
 
 | Paso | Qué hace |
@@ -47,6 +48,7 @@ python pipeline/09_patrones.py             # patrones del modelo validados con l
 | 07 | Entrena con 2019–2023, evalúa con 2024–2025, explica con SHAP, reentrena el LightGBM final con todo |
 | 08 | Clima (5) × día (7) × hora (24) = 840 mapas, cuantizados a 1 byte en escala log (`riesgo.json`) |
 | 09 | Patrones del modelo (clima × hora, víctimas, zonas nocturnas, domingos, interacciones SHAP), cada uno contrastado con tasas observadas e IC 95 % (`patrones.json`, `reports/patrones.md`) |
+| 10 | Recorridos aproximados de 135 tramos de avenidas y autopistas a partir de las celdas H3 (`avenidas.json`) y comunas simplificadas para el mapa de respaldo sin internet (`comunas.json`) |
 
 ### Clasificación del clima (`pipeline/clima.py`)
 
@@ -130,6 +132,30 @@ métrica es levemente optimista; con hojas chicas sobreajustaba y quedaba por de
 
 **Escenarios de la web:** para cada clima se usan los valores típicos (mediana) de las horas reales con
 esa condición a esa hora del día; se promedian enero, abril, julio y octubre; día no feriado.
+
+## Modo presentación (pestaña Historia)
+
+La web abre en una historia de 9 actos pensada para proyectar: la ciudad, la pregunta (con votación
+del público), el método, sol, lluvia, noche, tormenta, la validación del modelo y el clima de ahora.
+
+| Tecla | Qué hace |
+|---|---|
+| ↓ → PageDown, rueda, deslizar | Acto siguiente (un clicker de presentaciones también sirve) |
+| ↑ ← PageUp | Acto anterior |
+| Espacio (último acto) | Libera el mapa: zoom, búsqueda de avenidas y ficha de cada zona |
+| N | Abre las notas del orador en otra ventana (guion, cronómetro, botones para avanzar) |
+| M | Activa o silencia el sonido ambiente |
+| P (pestaña Riesgo) | Modo presentación del mapa: ← → hora, 1–5 clima, espacio recorre el día |
+
+- **Votación en vivo:** el acto 2 muestra un QR que lleva a `votar.html` (publicada en GitHub Pages).
+  Cada voto viaja por [ntfy.sh](https://ntfy.sh), un servicio público de mensajes sin cuenta, y la
+  pantalla los cuenta en tiempo real; el resultado se revela en el acto de la lluvia. Requiere que
+  `votar.html` esté publicada (se publica sola al hacer merge a `main`). Si nadie vota, se puede
+  marcar la apuesta del presentador tocando una de las barras.
+- **Clima y sonido:** lluvia, tormenta con relámpagos, sol, niebla y luz de día/noche sobre el mapa;
+  sonido generado con Tone.js (sin archivos de audio). El sonido arranca con el primer clic.
+- **Sin internet:** si el mapa base no carga, la web pasa sola a un mapa de respaldo con las comunas.
+  El clima en vivo y la votación sí necesitan conexión.
 
 ## Ver el mapa
 

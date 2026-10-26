@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#0b0d0f" />
+    <title>Votá · Riesgo vial CABA</title>
+    <style>
+      :root { color-scheme: dark; --bg: #0b0d0f; --panel: #14181c; --line: #2a3036; --ink: #ebe9e4; --ink-2: #a8adb2; --up: #ff7a52; --down: #8cc4ea; }
+      * { box-sizing: border-box; }
+      html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink); font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; }
+      main { min-height: 100%; display: flex; flex-direction: column; justify-content: center; gap: 18px; padding: 28px 20px calc(28px + env(safe-area-inset-bottom)); max-width: 480px; margin: 0 auto; }
+      .kicker { margin: 0; font: 500 12px ui-monospace, Menlo, monospace; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-2); }
+      h1 { margin: 0; font-size: 34px; line-height: 1.08; letter-spacing: -0.02em; }
+      p { margin: 0; color: var(--ink-2); font-size: 16px; line-height: 1.45; }
+      .opciones { display: grid; gap: 12px; margin-top: 8px; }
+      button { width: 100%; border: 1px solid var(--line); background: var(--panel); color: var(--ink); border-radius: 16px; padding: 22px 18px; font: 600 22px system-ui, sans-serif; text-align: left; display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: transform 0.12s, background 0.12s, border-color 0.12s; }
+      button:active { transform: scale(0.98); }
+      button small { font: 400 14px system-ui, sans-serif; color: var(--ink-2); }
+      button.on { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+      button.on small { color: #3a3f44; }
+      button:disabled { opacity: 0.6; }
+      .estado { min-height: 24px; font-size: 15px; color: var(--ink); }
+      .estado.error { color: var(--up); }
+      .pie { font-size: 12px; color: #6c737a; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <p class="kicker">Riesgo vial CABA · Votación en vivo</p>
+      <h1>Cuando llueve, ¿hay más choques o menos?</h1>
+      <p>Tu voto aparece al instante en la pantalla de la presentación. Podés cambiarlo hasta que se revele el resultado.</p>
+      <div class="opciones">
+        <button data-v="mas">Más choques <small>la lluvia los aumenta</small></button>
+        <button data-v="menos">Menos choques <small>la lluvia los reduce</small></button>
+      </div>
+      <p class="estado" role="status" aria-live="polite"></p>
+      <p class="pie">Anónimo: solo se envía tu elección y un número al azar para no contar dos veces el mismo celular.</p>
+    </main>
+    <script>
+      ;(function () {
+        var tema = decodeURIComponent(location.hash.slice(1))
+        var estado = document.querySelector('.estado')
+        var botones = document.querySelectorAll('button[data-v]')
+        if (!/^rvcaba-[a-z0-9]{6,20}$/.test(tema)) {
+          estado.textContent = 'Este enlace no es válido: escaneá de nuevo el QR de la pantalla.'
+          estado.className = 'estado error'
+          botones.forEach(function (b) { b.disabled = true })
+          return
+        }
+        var guardado = function (k, v) { try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v) } catch (e) { return null } }
+        var id = guardado('rvcaba-id')
+        if (!id) { id = Math.random().toString(36).slice(2, 12); guardado('rvcaba-id', id) }
+        var marcar = function (v) { botones.forEach(function (b) { b.classList.toggle('on', b.dataset.v === v) }) }
+        var previo = guardado('rvcaba-voto-' + tema)
+        if (previo) { marcar(previo); estado.textContent = 'Ya votaste. Podés cambiar tu voto.' }
+        botones.forEach(function (b) {
+          b.addEventListener('click', function () {
+            var v = b.dataset.v
+            botones.forEach(function (x) { x.disabled = true })
+            estado.className = 'estado'
+            estado.textContent = 'Enviando…'
+            fetch('https://ntfy.sh/' + tema, { method: 'POST', body: JSON.stringify({ v: v, id: id }) })
+              .then(function (r) {
+                if (!r.ok) throw new Error(r.status)
+                guardado('rvcaba-voto-' + tema, v)
+                marcar(v)
+                estado.textContent = '¡Listo! Mirá la pantalla.'
+                if (navigator.vibrate) navigator.vibrate(30)
+              })
+              .catch(function () {
+                estado.className = 'estado error'
+                estado.textContent = 'No se pudo enviar. Revisá la conexión y probá de nuevo.'
+              })
+              .finally(function () { botones.forEach(function (x) { x.disabled = false }) })
+          })
+        })
+      })()
+    </script>
+  </body>
+</html>
