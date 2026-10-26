@@ -10,6 +10,8 @@ export interface EstadoSonoro {
   /** 0–1: intensidad de la lluvia (por defecto la típica del clima). */
   lluvia?: number
   sirena?: boolean
+  /** true: todo el ambiente en silencio (por ejemplo, durante la intro, que trae su propio sonido). */
+  silencio?: boolean
 }
 
 const azar = (a: number, b: number) => a + Math.random() * (b - a)
@@ -118,7 +120,8 @@ class Paisaje {
   }
 
   private niveles() {
-    const { clima, hora, transito, lluvia } = this.estado
+    const { clima, hora, transito, lluvia, silencio } = this.estado
+    if (silencio) return { lluvia: 0, viento: 0, transito: 0, pajaros: 0, mudo: true }
     const lluviaBase = clima === 'tormenta' ? 1 : clima === 'lluvia' ? 0.55 : 0
     const ll = lluviaBase > 0 ? (lluvia ?? lluviaBase) : 0
     const dia = hora >= 6.5 && hora < 20
@@ -127,6 +130,7 @@ class Paisaje {
       viento: clima === 'tormenta' ? 0.9 : clima === 'niebla' ? 0.25 : clima === 'nublado' ? 0.2 : 0.05,
       transito: Math.min(1, Math.max(0.05, transito)) * (clima === 'niebla' ? 0.8 : 1),
       pajaros: dia && (clima === 'despejado' || clima === 'nublado') ? (clima === 'despejado' ? 1 : 0.4) : 0,
+      mudo: false,
     }
   }
 
@@ -136,8 +140,8 @@ class Paisaje {
     this.lluviaGain.gain.rampTo(0.55 * n.lluvia, t)
     this.goteoGain.gain.rampTo(0.12 * n.lluvia, t)
     this.vientoGain.gain.rampTo(0.5 * n.viento, t)
-    this.rumorGain.gain.rampTo(0.22 + 0.5 * n.transito, t)
-    const quiere = !!this.estado.sirena
+    this.rumorGain.gain.rampTo(n.mudo ? 0 : 0.22 + 0.5 * n.transito, t)
+    const quiere = !!this.estado.sirena && !n.mudo
     if (quiere !== this.sirenaSonando) {
       this.sirenaSonando = quiere
       this.sirena.gain.gain.rampTo(quiere ? 0.05 : 0, quiere ? 4 : 2)
@@ -156,6 +160,7 @@ class Paisaje {
     let voz = 0
     bucle(() => {
       const n = this.niveles()
+      if (n.mudo) return 2000
       const a = this.autos[voz++ % this.autos.length]
       const ahora = Tone.now()
       const dur = azar(1.6, 3.2)
@@ -174,7 +179,7 @@ class Paisaje {
     })
     bucle(() => {
       const n = this.niveles()
-      if (Math.random() < 0.55 * n.transito) {
+      if (!n.mudo && Math.random() < 0.55 * n.transito) {
         const ahora = Tone.now()
         const largo = azar(0.12, 0.45)
         const veces = Math.random() < 0.3 ? 2 : 1

@@ -26,6 +26,7 @@ import type { Modelo, Patrones, Siniestros } from '../data'
 import { useAhoraBA, usePronostico } from '../vivo'
 import { GUION, type IdActo } from './guion'
 import { CANAL, type MensajeNotas } from './Notas'
+import { Intro } from './Intro'
 
 gsap.registerPlugin(useGSAP, SplitText)
 
@@ -82,6 +83,9 @@ export function Historia({ riesgo, siniestros: s, patrones, modelo, onExplorar }
   const mapRef = useRef<MapRef>(null)
   const [mapaListo, setMapaListo] = useState(false)
   const silencioElegido = useRef(false)
+  // Antes de la portada: pantalla de inicio (habilita el sonido con un clic) y la intro del choque.
+  const [fase, setFase] = useState<'inicio' | 'intro' | 'historia'>('inicio')
+  const [sonidoIntro, setSonidoIntro] = useState(false)
   const { activo: sonido, encender, apagar } = useSonido()
   const ahora = useAhoraBA()
   const pronostico = usePronostico()
@@ -429,7 +433,7 @@ export function Historia({ riesgo, siniestros: s, patrones, modelo, onExplorar }
     const el = raiz.current
     if (!el) return
     const alRodar = (e: WheelEvent) => {
-      if (libre) return // en el mapa libre la rueda hace zoom
+      if (libre || fase !== 'historia') return // en el mapa libre la rueda hace zoom
       e.preventDefault()
       const t = performance.now()
       if (t < bloqueo.current) return
@@ -449,7 +453,13 @@ export function Historia({ riesgo, siniestros: s, patrones, modelo, onExplorar }
     }
     const alTeclear = (e: KeyboardEvent) => {
       const objetivo = e.target as HTMLElement
+      if (fase !== 'historia') return // la intro maneja sus propias teclas
       if (objetivo.closest('input, select, textarea') || e.metaKey || e.ctrlKey || e.altKey) return
+      if (e.key.toLowerCase() === 'i' && !libre) {
+        setActo(0)
+        setFase('intro')
+        return
+      }
       const k = e.key
       if (k.toLowerCase() === 'm') {
         if (sonido) apagar()
@@ -524,7 +534,7 @@ export function Historia({ riesgo, siniestros: s, patrones, modelo, onExplorar }
     : id === 'ciudad' ? 0.12 + 0.8 * (revelados / n)
     : id === 'pregunta' || id === 'metodo' || id === 'acierta' ? 0.3
     : Math.min(1, (perfilDespejado[horaEscena] / maxPerfil) * fClima.cantidad)
-  useAmbienteSonoro({ clima: climaEscena, hora: horaAmbiente, transito: transitoSonido, lluvia: intensidadVivo, sirena: id === 'tormenta' })
+  useAmbienteSonoro({ clima: climaEscena, hora: horaAmbiente, transito: transitoSonido, lluvia: intensidadVivo, sirena: id === 'tormenta', silencio: fase !== 'historia' })
 
   // ---------- texto de cada acto ----------
   const revelacion =
@@ -761,8 +771,8 @@ export function Historia({ riesgo, siniestros: s, patrones, modelo, onExplorar }
             {fmtNum(n)} siniestros viales con víctimas en la Ciudad de Buenos Aires, cruzados hora por hora con el clima.
           </p>
           <div className="h-acciones h-anim">
-            <button className="h-primario" onClick={() => { silencioElegido.current = false; void encender(); ir(1) }}>Empezar con sonido</button>
-            <button className="h-secundario" onClick={() => { silencioElegido.current = true; apagar(); ir(1) }}>Empezar sin sonido</button>
+            <button className="h-primario" onClick={() => ir(1)}>Empezar</button>
+            <button className="h-secundario" onClick={() => { setSonidoIntro(sonido); setFase('intro') }}>Ver la intro de nuevo <kbd>I</kbd></button>
           </div>
           <p className="h-ayuda h-anim">Avanzá con la rueda, deslizando, con ↓ → o con un clicker · N abre las notas del orador</p>
         </section>
@@ -829,6 +839,45 @@ export function Historia({ riesgo, siniestros: s, patrones, modelo, onExplorar }
         </button>
       )}
       {!libre && id === 'ahora' && <p className="h-pista">Barra espaciadora: ver el mapa</p>}
+      {fase === 'inicio' && (
+        <section className="h-inicio">
+          <p className="i-kicker-fijo">Trabajo práctico · Ciencia de Datos</p>
+          <div className="h-acciones">
+            <button
+              className="h-primario"
+              onClick={async () => {
+                silencioElegido.current = false
+                await encender()
+                setSonidoIntro(true)
+                setFase('intro')
+              }}
+            >
+              Comenzar con sonido
+            </button>
+            <button
+              className="h-secundario"
+              onClick={() => {
+                silencioElegido.current = true
+                apagar()
+                setSonidoIntro(false)
+                setFase('intro')
+              }}
+            >
+              Sin sonido
+            </button>
+          </div>
+          <button className="h-inicio-saltar" onClick={() => setFase('historia')}>Ir directo a la portada</button>
+        </section>
+      )}
+      {fase === 'intro' && (
+        <Intro
+          conSonido={sonidoIntro}
+          total={n}
+          desde={porAnio[0].anio}
+          hasta={porAnio[porAnio.length - 1].anio}
+          onFin={() => setFase('historia')}
+        />
+      )}
     </div>
   )
 }

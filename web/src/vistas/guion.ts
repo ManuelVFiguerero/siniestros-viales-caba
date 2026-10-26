@@ -15,9 +15,9 @@ export const GUION: Guion[] = [
     nombre: 'Portada',
     segundos: 20,
     notas: [
-      'Presentarse: nombres del grupo y materia.',
-      'Lanzar la pregunta en voz alta, sin responderla: "¿La lluvia nos hace más cuidadosos?".',
-      'Tocar "Empezar con sonido" (el audio solo arranca con un clic).',
+      'Antes de empezar: en la pantalla de inicio tocar "Comenzar con sonido" (el audio solo arranca con un clic). Corre la intro del choque (~13 s); I la repite para ensayar, Esc la saltea.',
+      'Después del silencio: presentarse y lanzar la pregunta en voz alta, sin responderla: "¿La lluvia nos hace más cuidadosos?".',
+      'Tocar "Empezar".',
     ],
   },
   {

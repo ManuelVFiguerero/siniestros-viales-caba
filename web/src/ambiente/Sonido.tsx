@@ -28,10 +28,10 @@ export const useSonido = () => useContext(SonidoCtx)
 
 /** Hace sonar el ambiente que corresponde a la vista (clima, hora, tránsito). */
 export function useAmbienteSonoro(estado: EstadoSonoro) {
-  const { clima, hora, transito, lluvia, sirena } = estado
+  const { clima, hora, transito, lluvia, sirena, silencio } = estado
   useEffect(() => {
-    paisaje.set({ clima, hora, transito, lluvia, sirena })
-  }, [clima, hora, transito, lluvia, sirena])
+    paisaje.set({ clima, hora, transito, lluvia, sirena, silencio })
+  }, [clima, hora, transito, lluvia, sirena, silencio])
 }
 
 export const trueno = (cercania: number) => paisaje.trueno(cercania)
