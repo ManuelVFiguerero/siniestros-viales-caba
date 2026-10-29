@@ -133,19 +133,6 @@ métrica es levemente optimista; con hojas chicas sobreajustaba y quedaba por de
 **Escenarios de la web:** para cada clima se usan los valores típicos (mediana) de las horas reales con
 esa condición a esa hora del día; se promedian enero, abril, julio y octubre; día no feriado.
 
-## Modo presentación (pestaña Historia)
-
-La web abre en una historia de 9 actos pensada para proyectar: la ciudad, la pregunta (con votación
-del público), el método, sol, lluvia, noche, tormenta, la validación del modelo y el clima de ahora.
-
-| Tecla | Qué hace |
-|---|---|
-| ↓ → PageDown, rueda, deslizar | Acto siguiente (un clicker de presentaciones también sirve) |
-| ↑ ← PageUp | Acto anterior |
-| Espacio (último acto) | Libera el mapa: zoom, búsqueda de avenidas y ficha de cada zona |
-| N | Abre las notas del orador en otra ventana (guion, cronómetro, botones para avanzar) |
-| M | Activa o silencia el sonido ambiente |
-| P (pestaña Riesgo) | Modo presentación del mapa: ← → hora, 1–5 clima, espacio recorre el día |
 
 - **Votación en vivo:** el acto 2 muestra un QR que lleva a `votar.html` (publicada en GitHub Pages).
   Cada voto viaja por [ntfy.sh](https://ntfy.sh), un servicio público de mensajes sin cuenta, y la

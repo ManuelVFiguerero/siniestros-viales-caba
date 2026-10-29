@@ -1,12 +1,13 @@
 // Intro de la presentación (~13 s): créditos sobre una ruta mojada, un auto que se acerca a la pantalla,
 // el choque contra el "vidrio" y, en silencio, la cifra real. Esc o clic en "Saltar" la terminan.
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import gsap from 'gsap'
 import { crearSonidoIntro, type SonidoIntro } from '../ambiente/introSonido'
 import { prefiereMenosMovimiento } from '../ambiente/luz'
 import { fmtNum } from '../riesgo'
+import { iniciarEscena3D } from '../intro3d/escena'
 
-export const INTEGRANTES = ['Tomas Joaquin Cortes', 'Dante Leandro Aguiilar', 'Walter Jaldin', 'Manuel Vicente Figuerero']
+export const INTEGRANTES = ['Tomas Joaquin Cortes', 'Dante Leandro Aguilar', 'Walter Jaldin', 'Manuel Vicente Figuerero']
 
 interface Props {
   /** El sonido ya fue habilitado con un clic. */
@@ -59,14 +60,25 @@ export function Intro({ conSonido, total, desde, hasta, onFin }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const estado = useRef({ p: 0, luces: 0, altas: 0, fin: false })
   const terminar = useRef(onFin)
+  const saltarRef = useRef<() => void>(() => onFin())
   const lineas = useMemo(() => grietas(960 + 40, 540 - 60), [])
 
   useEffect(() => {
     terminar.current = onFin
   })
 
-  // ---------- dibujo de la ruta, la lluvia y el auto ----------
+  // ---------- escena 3D (three.js); si no hay WebGL, la versión plana de abajo ----------
+  const canvas3dRef = useRef<HTMLCanvasElement>(null)
+  const [sin3d, setSin3d] = useState(false)
   useEffect(() => {
+    const destruir = iniciarEscena3D(canvas3dRef.current!, estado, prefiereMenosMovimiento())
+    if (!destruir) setSin3d(true)
+    return () => destruir?.()
+  }, [])
+
+  // ---------- versión plana (canvas 2D): respaldo para equipos sin WebGL ----------
+  useEffect(() => {
+    if (!sin3d) return
     const canvas = canvasRef.current!
     const c = canvas.getContext('2d')!
     const dpr = Math.min(window.devicePixelRatio || 1, 1.5)
@@ -225,7 +237,7 @@ export function Intro({ conSonido, total, desde, hasta, onFin }: Props) {
       cancelAnimationFrame(raf)
       window.removeEventListener('resize', medir)
     }
-  }, [])
+  }, [sin3d])
 
   // ---------- guion temporal ----------
   useEffect(() => {
@@ -239,16 +251,18 @@ export function Intro({ conSonido, total, desde, hasta, onFin }: Props) {
     const e = estado.current
     const q = (s: string) => el.querySelectorAll(s)
     const tl = gsap.timeline({ onComplete: () => terminar.current() })
-    tl.to(q('.i-kicker'), { autoAlpha: 1, y: 0, duration: 1, ease: 'power2.out' }, 0.4)
-    tl.to(q('.i-materia'), { autoAlpha: 1, y: 0, duration: 1, ease: 'power2.out' }, 1.3)
+    // Los créditos llegan desde el fondo (profundidad real con perspectiva CSS).
+    tl.fromTo(q('.i-kicker'), { autoAlpha: 0, z: -420, y: 0 }, { autoAlpha: 1, z: 0, duration: 1.3, ease: 'expo.out' }, 0.4)
+    tl.fromTo(q('.i-materia'), { autoAlpha: 0, z: -700, y: 0, filter: 'blur(14px)' }, { autoAlpha: 1, z: 0, filter: 'blur(0px)', duration: 1.5, ease: 'expo.out' }, 1.2)
     tl.to(e, { luces: 1, duration: 2.5, ease: 'power1.in' }, 2.6)
     tl.to(e, { p: 0.5, duration: 4.4, ease: 'power1.in', onUpdate: () => sonido?.acercar(e.p) }, 2.6)
     q('.i-nombre').forEach((n, k) => {
       const t = 2.9 + k * 0.85
-      tl.to(n, { autoAlpha: 1, y: 0, filter: 'blur(0px)', duration: 0.6, ease: 'power3.out' }, t)
+      tl.fromTo(n, { autoAlpha: 0, z: -360, y: 0, filter: 'blur(8px)' }, { autoAlpha: 1, z: 0, filter: 'blur(0px)', duration: 0.9, ease: 'expo.out' }, t)
       tl.call(() => sonido?.golpe(k), [], t)
     })
-    tl.to(q('.i-creditos'), { autoAlpha: 0, scale: 1.04, duration: 0.6, ease: 'power2.in' }, 6.9)
+    // Salen hacia la cámara, como si el auto los atravesara.
+    tl.to(q('.i-creditos'), { autoAlpha: 0, z: 260, filter: 'blur(10px)', duration: 0.7, ease: 'power2.in' }, 6.9)
     tl.to(e, { p: 1, duration: 1.6, ease: 'power3.in', onUpdate: () => sonido?.acercar(e.p) }, 7.0)
     tl.call(() => sonido?.bocina(), [], 7.35)
     tl.to(e, { altas: 1, duration: 0.12, yoyo: true, repeat: 3 }, 7.45)
@@ -272,18 +286,33 @@ export function Intro({ conSonido, total, desde, hasta, onFin }: Props) {
     tl.to(q('.i-grieta'), { autoAlpha: 0, duration: 0.8 }, 10.0)
     tl.to(q('.i-cifra'), { autoAlpha: 1, duration: 0.9 }, 10.6)
     tl.to(q('.i-cifra'), { autoAlpha: 0, duration: 0.7 }, 13.4)
+    // Fundido a la portada (que ya está debajo) en vez de un corte.
+    tl.to(el, { autoAlpha: 0, duration: 1.1, ease: 'power1.inOut' }, 13.9)
 
+    const saltarConFundido = () => {
+      tl.kill()
+      sonido?.detener()
+      gsap.to(el, { autoAlpha: 0, duration: 0.45, ease: 'power1.out', onComplete: () => terminar.current() })
+    }
+    saltarRef.current = saltarConFundido
+    // Parallax: los créditos giran apenas siguiendo al mouse.
+    const alMover = (ev: PointerEvent) => {
+      if (calma) return
+      const rx = (ev.clientY / window.innerHeight - 0.5) * -8
+      const ry = (ev.clientX / window.innerWidth - 0.5) * 10
+      gsap.to(el.querySelector('.i-creditos'), { rotationX: rx, rotationY: ry, duration: 1.2, ease: 'power2.out', overwrite: 'auto' })
+    }
+    window.addEventListener('pointermove', alMover)
     const saltar = (ev: KeyboardEvent) => {
       if (ev.key === 'Escape') {
         ev.preventDefault()
-        tl.kill()
-        sonido?.detener()
-        terminar.current()
+        saltarConFundido()
       }
     }
     window.addEventListener('keydown', saltar)
     return () => {
       window.removeEventListener('keydown', saltar)
+      window.removeEventListener('pointermove', alMover)
       tl.kill()
       sonido?.detener()
     }
@@ -292,13 +321,14 @@ export function Intro({ conSonido, total, desde, hasta, onFin }: Props) {
   return (
     <div className="intro" ref={raiz}>
       <div className="i-sacudon">
-        <canvas ref={canvasRef} className="i-ruta" />
+        <canvas ref={canvas3dRef} className="i-ruta" style={{ display: sin3d ? 'none' : 'block' }} />
+        <canvas ref={canvasRef} className="i-ruta" style={{ display: sin3d ? 'block' : 'none' }} />
         <div className="i-creditos">
           <p className="i-kicker">Trabajo práctico</p>
           <h1 className="i-materia">Ciencia de Datos</h1>
           <ul className="i-nombres">
             {INTEGRANTES.map((n) => (
-              <li key={n} className="i-nombre">{n}</li>
+              <li key={n} className="i-nombre"><span>{n}</span></li>
             ))}
           </ul>
         </div>
@@ -314,10 +344,7 @@ export function Intro({ conSonido, total, desde, hasta, onFin }: Props) {
       </p>
       <button
         className="i-saltar"
-        onClick={() => {
-          estado.current.fin = true
-          terminar.current()
-        }}
+        onClick={() => saltarRef.current()}
       >
         Saltar intro <kbd>Esc</kbd>
       </button>

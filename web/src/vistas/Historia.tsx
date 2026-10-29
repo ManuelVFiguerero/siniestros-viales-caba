@@ -26,6 +26,7 @@ import type { Modelo, Patrones, Siniestros } from '../data'
 import { useAhoraBA, usePronostico } from '../vivo'
 import { GUION, type IdActo } from './guion'
 import { CANAL, type MensajeNotas } from './Notas'
+import { ComparacionModelos, CurvaHora, Fuentes, Limites, Pipeline, Shap } from './historiaTecnica'
 import { Intro } from './Intro'
 
 gsap.registerPlugin(useGSAP, SplitText)
@@ -56,12 +57,16 @@ const ESCENA: Record<IdActo, { escena: { dia: number; hora: number; clima: strin
   portada: { escena: null, camara: { zoom: 10.2, pitch: 0, bearing: 0 } },
   ciudad: { escena: null, camara: { zoom: 11.25, pitch: 28, bearing: -10 } },
   pregunta: { escena: null, camara: { zoom: 11.05, pitch: 0, bearing: 0 } },
-  metodo: { escena: null, camara: { zoom: 10.9, pitch: 0, bearing: 0 } },
   sol: { escena: { dia: MARTES, hora: 14, clima: 'despejado' }, camara: { zoom: 11.55, pitch: 34, bearing: -14 } },
-  lluvia: { escena: { dia: MARTES, hora: 14, clima: 'lluvia' }, camara: { zoom: 11.75, pitch: 40, bearing: 6 } },
+  lluvia: { escena: { dia: MARTES, hora: 14, clima: 'lluvia' }, camara: { zoom: 11.75, pitch: 52, bearing: 6 } },
   noche: { escena: { dia: MARTES, hora: 22, clima: 'lluvia' }, camara: { zoom: 11.85, pitch: 46, bearing: 22 } },
   tormenta: { escena: { dia: MARTES, hora: 22, clima: 'tormenta' }, camara: { zoom: 12.4, pitch: 58, bearing: -28 } },
+  patron: { escena: { dia: MARTES, hora: 22, clima: 'lluvia' }, camara: { zoom: 11.1, pitch: 20, bearing: 8 } },
   acierta: { escena: null, camara: { zoom: 11.2, pitch: 0, bearing: 0 } },
+  datos: { escena: null, camara: { zoom: 10.8, pitch: 35, bearing: -20 } },
+  pipeline: { escena: null, camara: { zoom: 10.7, pitch: 45, bearing: 15 } },
+  modelo: { escena: null, camara: { zoom: 10.9, pitch: 30, bearing: 35 } },
+  limites: { escena: null, camara: { zoom: 10.7, pitch: 0, bearing: 0 } },
   ahora: { escena: null, camara: { zoom: 11.4, pitch: 0, bearing: 0 } },
 }
 const ULTIMO = GUION.length - 1
@@ -224,8 +229,9 @@ export function Historia({ riesgo, siniestros: s, patrones, modelo, onExplorar }
   const maxPerfil = Math.max(...perfilDespejado, 1e-6)
 
   // ---------- capas ----------
-  const mostrarPuntos = id === 'portada' || id === 'ciudad' || id === 'pregunta' || id === 'metodo' || id === 'acierta'
-  const tenue = id === 'pregunta' || id === 'metodo'
+  const tecnico = GUION[acto].parte === 'tecnica'
+  const mostrarPuntos = id === 'portada' || id === 'ciudad' || id === 'pregunta' || id === 'acierta' || tecnico
+  const tenue = id === 'pregunta' || tecnico
   const es3d = id === 'tormenta'
   const filtro = useMemo(() => new DataFilterExtension({ filterSize: 1 }), [])
   const datosPuntos = useMemo(() => ({ length: n }), [n])
@@ -333,7 +339,7 @@ export function Historia({ riesgo, siniestros: s, patrones, modelo, onExplorar }
         t.kill()
       }
     }
-    if (id === 'pregunta' || id === 'metodo') setRevelados(n)
+    if (id === 'pregunta' || GUION[acto].parte === 'tecnica') setRevelados(n)
     if (id === 'portada') setRevelados(0)
     if (id === 'noche') {
       const o = { h: 14 }
@@ -360,8 +366,12 @@ export function Historia({ riesgo, siniestros: s, patrones, modelo, onExplorar }
         tl.from(sp.words, { yPercent: 110, duration: 0.8, ease: 'power3.out', stagger: 0.045 }, 0.1)
       }
       tl.from(panel.querySelectorAll('.h-anim'), { y: 22, autoAlpha: 0, duration: 0.7, ease: 'power2.out', stagger: 0.12 }, 0.35)
-      panel.querySelectorAll<HTMLElement>('[data-ancho]').forEach((el, k) => {
-        tl.fromTo(el, { width: '0%' }, { width: `${el.dataset.ancho}%`, duration: 1.2, ease: 'power2.out' }, 0.9 + k * 0.5)
+      tl.fromTo(panel.querySelectorAll('.h-trazo'), { strokeDashoffset: 1 }, { strokeDashoffset: 0, duration: 2.2, ease: 'power2.inOut', stagger: 0.5 }, 0.8)
+      tl.from(panel.querySelectorAll('.h-punto'), { autoAlpha: 0, duration: 0.5, stagger: 0.15 }, 2.4)
+      const barras = panel.querySelectorAll<HTMLElement>('[data-ancho]')
+      const paso = barras.length > 3 ? 0.09 : 0.5
+      barras.forEach((el, k) => {
+        tl.fromTo(el, { width: '0%' }, { width: `${el.dataset.ancho}%`, duration: 1.2, ease: 'power2.out' }, 0.9 + k * paso)
       })
       panel.querySelectorAll<HTMLElement>('[data-cuenta]').forEach((el) => {
         const fin = Number(el.dataset.cuenta)
@@ -532,7 +542,7 @@ export function Historia({ riesgo, siniestros: s, patrones, modelo, onExplorar }
   const transitoSonido =
     id === 'portada' ? 0.08
     : id === 'ciudad' ? 0.12 + 0.8 * (revelados / n)
-    : id === 'pregunta' || id === 'metodo' || id === 'acierta' ? 0.3
+    : id === 'pregunta' || id === 'acierta' || tecnico ? 0.25
     : Math.min(1, (perfilDespejado[horaEscena] / maxPerfil) * fClima.cantidad)
   useAmbienteSonoro({ clima: climaEscena, hora: horaAmbiente, transito: transitoSonido, lluvia: intensidadVivo, sirena: id === 'tormenta', silencio: fase !== 'historia' })
 
@@ -551,7 +561,7 @@ export function Historia({ riesgo, siniestros: s, patrones, modelo, onExplorar }
       case 'ciudad':
         return (
           <>
-            <p className="h-kicker h-anim">Acto 1 · La ciudad</p>
+            <p className="h-kicker h-anim">Acto {acto} · La ciudad</p>
             <h2 className="h-titulo">Cada punto es un siniestro con víctimas.</h2>
             <p className="h-cifra h-anim">
               <span className="h-num">{fmtNum(revelados)}</span>
@@ -563,7 +573,7 @@ export function Historia({ riesgo, siniestros: s, patrones, modelo, onExplorar }
       case 'pregunta':
         return (
           <>
-            <p className="h-kicker h-anim">Acto 2 · La pregunta</p>
+            <p className="h-kicker h-anim">Acto {acto} · La pregunta</p>
             <h2 className="h-titulo">Cuando llueve, ¿hay más choques o menos?</h2>
             <p className="h-cuerpo h-anim">Cruzamos cada siniestro con el clima de esa hora y ese lugar. Antes de mirar: escaneen el código y voten.</p>
             <div className="h-votos h-anim" aria-live="polite">
@@ -585,39 +595,10 @@ export function Historia({ riesgo, siniestros: s, patrones, modelo, onExplorar }
             </div>
           </>
         )
-      case 'metodo': {
-        const ancho = (v: number) => Math.round((v / Math.max(cifras.lluviaDiaEsp, cifras.lluviaDiaObs)) * 100)
-        return (
-          <>
-            <p className="h-kicker h-anim">Acto 3 · Cómo lo medimos</p>
-            <h2 className="h-titulo">Contar choques no alcanza: hay que compararlos.</h2>
-            <p className="h-cuerpo h-anim">Siempre hay más choques con sol porque casi siempre hay sol. Por eso cada hora de lluvia se compara con horas despejadas iguales:</p>
-            <div className="h-chips h-anim">
-              <span>misma zona</span><span>mismo año</span><span>misma hora</span><span>mismo tipo de día</span>
-            </div>
-            <div className="h-barras h-anim">
-              <div>
-                <span className="h-barra-nombre">Esperados si hubiera estado despejado</span>
-                <span className="h-barra-pista"><i data-ancho={ancho(cifras.lluviaDiaEsp)} className="esp" /></span>
-                <span className="h-barra-num">{fmtNum(cifras.lluviaDiaEsp)}</span>
-              </div>
-              <div>
-                <span className="h-barra-nombre">Observados con lluvia, de día</span>
-                <span className="h-barra-pista"><i data-ancho={ancho(cifras.lluviaDiaObs)} className="obs" /></span>
-                <span className="h-barra-num">{fmtNum(cifras.lluviaDiaObs)}</span>
-              </div>
-            </div>
-            <p className="h-formula h-anim">
-              Riesgo relativo = observados ÷ esperados = <b>{fmtNum(cifras.lluviaDiaRR, 2)}</b>
-              <small>IC 95 %: {fmtNum(cifras.lluviaDiaLo, 2)} a {fmtNum(cifras.lluviaDiaHi, 2)} · menor que 1 = menos choques que lo esperable</small>
-            </p>
-          </>
-        )
-      }
       case 'sol':
         return (
           <>
-            <p className="h-kicker h-anim">Acto 4 · Martes, 14:00 · Despejado</p>
+            <p className="h-kicker h-anim">Acto {acto} · Martes, 14:00 · Despejado</p>
             <h2 className="h-titulo">Un martes cualquiera, a pleno sol.</h2>
             <p className="h-cifra h-anim">
               <span className="h-num" data-cuenta={total} data-dec="2">{fmtNum(total, 2)}</span>
@@ -629,7 +610,7 @@ export function Historia({ riesgo, siniestros: s, patrones, modelo, onExplorar }
       case 'lluvia':
         return (
           <>
-            <p className="h-kicker h-anim">Acto 5 · Martes, 14:00 · Lluvia</p>
+            <p className="h-kicker h-anim">Acto {acto} · Martes, 14:00 · Lluvia</p>
             <h2 className="h-titulo">Empieza a llover… y los siniestros bajan.</h2>
             <p className="h-cifra h-anim">
               <span className="h-num down" data-cuenta={cifras.lluviaDia} data-signo="1">{conSigno(cifras.lluviaDia)}</span>
@@ -644,7 +625,7 @@ export function Historia({ riesgo, siniestros: s, patrones, modelo, onExplorar }
       case 'noche':
         return (
           <>
-            <p className="h-kicker h-anim">Acto 6 · Martes, {hhmm(Math.round(horaVis))} · Lluvia</p>
+            <p className="h-kicker h-anim">Acto {acto} · Martes, {hhmm(Math.round(horaVis))} · Lluvia</p>
             <h2 className="h-titulo">Pero se hace de noche, y la lluvia sigue.</h2>
             <p className="h-cifra h-anim">
               <span className="h-num up" data-cuenta={cifras.lluviaNoche} data-signo="1">{conSigno(cifras.lluviaNoche)}</span>
@@ -658,7 +639,7 @@ export function Historia({ riesgo, siniestros: s, patrones, modelo, onExplorar }
       case 'tormenta':
         return (
           <>
-            <p className="h-kicker h-anim">Acto 7 · Martes, 22:00 · Tormenta</p>
+            <p className="h-kicker h-anim">Acto {acto} · Martes, 22:00 · Tormenta</p>
             <h2 className="h-titulo">El peor momento de la semana.</h2>
             <p className="h-cifra h-anim">
               <span className="h-num up" data-cuenta={cifras.tormentaNoche} data-signo="1">{conSigno(cifras.tormentaNoche)}</span>
@@ -673,22 +654,87 @@ export function Historia({ riesgo, siniestros: s, patrones, modelo, onExplorar }
             </ol>
           </>
         )
+      case 'patron':
+        return (
+          <>
+            <p className="h-kicker h-anim">Acto {acto} · El patrón</p>
+            <h2 className="h-titulo">No fue casualidad: el efecto cambia con la hora.</h2>
+            <div className="h-grafico h-anim">
+              <CurvaHora patrones={patrones} />
+              <div className="h-grafico-ley">
+                <span><i className="lluvia" />Lluvia (modelo)</span>
+                <span><i className="tormenta" />Tormenta (modelo)</span>
+                <span><i className="obs" />Lluvia observada, con IC 95 %</span>
+              </div>
+            </div>
+            <p className="h-cuerpo h-anim">De día, la lluvia saca gente de la calle. De noche, el riesgo sube. El modelo aprendió esa inversión solo, y los datos la confirman.</p>
+          </>
+        )
+      case 'datos':
+        return (
+          <>
+            <p className="h-kicker h-anim">Detrás de los datos · Las fuentes</p>
+            <h2 className="h-titulo">Tres datasets abiertos, cruzados hora por hora.</h2>
+            <Fuentes total={n} filas={modelo.datos.filas} />
+          </>
+        )
+      case 'pipeline':
+        return (
+          <>
+            <p className="h-kicker h-anim">Detrás de los datos · El pipeline</p>
+            <h2 className="h-titulo">De un Excel a 840 mapas de riesgo.</h2>
+            <Pipeline celdaHoras={modelo.datos.celda_horas} />
+            <p className="h-letra h-anim">Python (pandas, H3, scikit-learn, LightGBM, SHAP) · web en React, deck.gl y MapLibre · un script por paso, todo reproducible.</p>
+          </>
+        )
+      case 'modelo':
+        return (
+          <>
+            <p className="h-kicker h-anim">Detrás de los datos · El modelo</p>
+            <h2 className="h-titulo">Tres modelos, una validación honesta.</h2>
+            <div className="h-dos">
+              <div>
+                <p className="h-sub h-anim">Evaluados con {cifras.test}, años que no vieron</p>
+                <ComparacionModelos modelo={modelo} />
+                <p className="h-letra h-anim">Regresión de Poisson por celda y hora. Entrenados con {cifras.train}.</p>
+              </div>
+              <div>
+                <p className="h-sub h-anim">Qué mira el modelo (SHAP)</p>
+                <Shap modelo={modelo} />
+              </div>
+            </div>
+          </>
+        )
+      case 'limites':
+        return (
+          <>
+            <p className="h-kicker h-anim">Detrás de los datos · Lo que falta</p>
+            <h2 className="h-titulo">Lo que todavía no sabemos.</h2>
+            <Limites />
+          </>
+        )
       case 'acierta':
         return (
           <>
-            <p className="h-kicker h-anim">Acto 8 · ¿El modelo acierta?</p>
+            <p className="h-kicker h-anim">Acto {acto} · ¿El modelo acierta?</p>
             <h2 className="h-titulo">Lo pusimos a prueba con dos años que nunca vio.</h2>
-            <p className="h-cifra h-anim">
-              <span className="h-num up" data-cuenta={cifras.captura} data-suf=" %" data-retraso="1.4">{cifras.captura} %</span>
-              <span className="h-num-nota">
-                de los siniestros de {cifras.test} cayó en el 10 % de zonas y horas que el modelo marcó como más riesgosas
-              </span>
-            </p>
             <p className="h-cuerpo h-anim">
-              El mapa clásico de puntos calientes captura el <b>{cifras.capturaBase} %</b>. Sumar la hora, el día y el clima lo mejora. Los puntos blancos son siniestros reales de {cifras.test} que cayeron en las zonas marcadas.
+              De cada 10 siniestros de {cifras.test}, <b className="h-resalte">{fmtNum(Math.round(cifras.captura / 10))}</b> cayeron en el 10 % de zonas y horas que el modelo marcó como más riesgosas.
             </p>
+            <div className="h-duelo h-anim" aria-label="Captura del modelo frente al mapa clásico">
+              <div className="h-duelo-fila modelo">
+                <span className="h-duelo-nombre">Nuestro modelo<small>zona + hora + día + clima</small></span>
+                <span className="h-duelo-pista"><i data-ancho={cifras.captura * 2} /></span>
+                <b data-cuenta={cifras.captura} data-suf=" %" data-retraso="1.1">{cifras.captura} %</b>
+              </div>
+              <div className="h-duelo-fila base">
+                <span className="h-duelo-nombre">Mapa clásico de puntos calientes<small>solo la zona</small></span>
+                <span className="h-duelo-pista"><i data-ancho={cifras.capturaBase * 2} /></span>
+                <b data-cuenta={cifras.capturaBase} data-suf=" %" data-retraso="1.6">{cifras.capturaBase} %</b>
+              </div>
+            </div>
             <p className="h-letra h-anim">
-              Entrenado con {cifras.train}, evaluado con {cifras.test}. El mapa muestra el riesgo medio del modelo final.
+              Puntos blancos: siniestros reales de {cifras.test} que cayeron en las zonas marcadas. Entrenado con {cifras.train}, evaluado con {cifras.test}.
             </p>
           </>
         )
@@ -722,7 +768,7 @@ export function Historia({ riesgo, siniestros: s, patrones, modelo, onExplorar }
   })()
 
   return (
-    <div className={`historia acto-${id}${libre ? ' es-libre' : ''}`} ref={raiz}>
+    <div className={`historia acto-${id}${libre ? ' es-libre' : ''}${tecnico ? ' parte-tecnica' : ''}`} ref={raiz}>
       <div className="h-mapa">
         <MapaBase
           mapRef={mapRef}
@@ -824,11 +870,12 @@ export function Historia({ riesgo, siniestros: s, patrones, modelo, onExplorar }
 
       {!libre && (
         <nav className="h-actos" aria-label="Actos">
-          {GUION.slice(1).map((a, k) => (
+          {GUION.slice(1).map((a, k) => [
+            a.parte === 'tecnica' && GUION[k].parte !== 'tecnica' ? <span key="sep" className="h-actos-sep" title="Detrás de los datos" /> : null,
             <button key={a.id} className={acto === k + 1 ? 'on' : acto > k + 1 ? 'visto' : ''} onClick={() => ir(k + 1)} aria-label={`${k + 1}. ${a.nombre}`} aria-current={acto === k + 1}>
               <span>{a.nombre}</span>
-            </button>
-          ))}
+            </button>,
+          ])}
         </nav>
       )}
 
@@ -841,7 +888,13 @@ export function Historia({ riesgo, siniestros: s, patrones, modelo, onExplorar }
       {!libre && id === 'ahora' && <p className="h-pista">Barra espaciadora: ver el mapa</p>}
       {fase === 'inicio' && (
         <section className="h-inicio">
+          <i className="h-orbe a" aria-hidden />
+          <i className="h-orbe b" aria-hidden />
+          <i className="h-orbe c" aria-hidden />
+          <div className="h-inicio-tarjeta">
           <p className="i-kicker-fijo">Trabajo práctico · Ciencia de Datos</p>
+          <p className="h-inicio-titulo">Siniestros viales en la Ciudad de Buenos Aires</p>
+          <p className="h-inicio-nota">Recomendado con sonido · pantalla completa con F11</p>
           <div className="h-acciones">
             <button
               className="h-primario"
@@ -867,6 +920,7 @@ export function Historia({ riesgo, siniestros: s, patrones, modelo, onExplorar }
             </button>
           </div>
           <button className="h-inicio-saltar" onClick={() => setFase('historia')}>Ir directo a la portada</button>
+          </div>
         </section>
       )}
       {fase === 'intro' && (

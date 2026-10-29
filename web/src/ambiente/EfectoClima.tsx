@@ -266,6 +266,8 @@ export function EfectoClima({ clima, hora, intensidad, fuerza = 'sutil', vidrio 
     <div className={`clima-fx fx-${fuerza}`} aria-hidden>
       <div className="fx-noche" style={{ opacity: (1 - dia) * (fuerza === 'pleno' ? 0.75 : 0.5) }} />
       <div className="fx-dorado" style={{ opacity: dorado * m }} />
+      {/* Cielo de día nublado: con lluvia de día la luz es gris y difusa, no oscura como de noche. */}
+      <div className="fx-dia" style={{ opacity: dia * Math.min(1, n.nubes * 1.1) * m }} />
       <div className="fx-sol" style={{ opacity: n.sol * dia * m }}>
         <div className="fx-rayos" />
       </div>
