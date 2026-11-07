@@ -6,10 +6,14 @@ import { RiesgoPrevisto } from './vistas/RiesgoPrevisto'
 import { Historico } from './vistas/Historico'
 import { ModeloInforme } from './vistas/ModeloInforme'
 import { Patrones, type DestinoMapa } from './vistas/Patrones'
+import { Historia } from './vistas/Historia'
+import { Notas } from './vistas/Notas'
+import { BotonSonido, SonidoProvider } from './ambiente/Sonido'
 
-type Pestania = 'riesgo' | 'patrones' | 'historico' | 'modelo'
+type Pestania = 'inicio' | 'riesgo' | 'patrones' | 'historico' | 'modelo'
 
 const PESTANIAS: { k: Pestania; t: string }[] = [
+  { k: 'inicio', t: 'Historia' },
   { k: 'riesgo', t: 'Riesgo' },
   { k: 'patrones', t: 'Patrones' },
   { k: 'historico', t: 'Histórico' },
@@ -26,10 +30,20 @@ interface Datos {
 
 function pestaniaInicial(): Pestania {
   const h = window.location.hash.slice(1)
-  return h === 'historico' || h === 'modelo' || h === 'patrones' ? h : 'riesgo'
+  return h === 'historico' || h === 'modelo' || h === 'patrones' || h === 'riesgo' ? h : 'inicio'
 }
 
 export default function App() {
+  // Ventana de notas del orador: no carga datos ni mapa.
+  if (window.location.hash === '#notas') return <Notas />
+  return (
+    <SonidoProvider>
+      <Contenido />
+    </SonidoProvider>
+  )
+}
+
+function Contenido() {
   const [datos, setDatos] = useState<Datos | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [pestania, setPestania] = useState<Pestania>(pestaniaInicial)
@@ -45,7 +59,7 @@ export default function App() {
   const ir = (p: Pestania) => {
     if (p === 'riesgo') setDestino(null)
     setPestania(p)
-    history.replaceState(null, '', p === 'riesgo' ? ' ' : `#${p}`)
+    history.replaceState(null, '', p === 'inicio' ? ' ' : `#${p}`)
   }
 
   if (error) return <div className="loading">No se pudieron cargar los datos: {error}</div>
@@ -62,6 +76,7 @@ export default function App() {
           <p className="brand-name">Riesgo vial CABA</p>
           <p className="brand-sub">Siniestros con víctimas × clima · 2019–2025</p>
         </div>
+        <BotonSonido className="compact" />
       </div>
       <nav className="tabs" role="tablist">
         {PESTANIAS.map(({ k, t }) => (
@@ -75,6 +90,15 @@ export default function App() {
 
   return (
     <div className={`shell tab-${pestania}`}>
+      {pestania === 'inicio' && (
+        <Historia
+          riesgo={datos.riesgo}
+          siniestros={datos.siniestros}
+          patrones={datos.patrones}
+          modelo={datos.modelo}
+          onExplorar={() => ir('riesgo')}
+        />
+      )}
       {pestania === 'riesgo' && <RiesgoPrevisto key={destino?.clave ?? 0} riesgo={datos.riesgo} cabecera={cabecera} inicial={destino?.d} />}
       {pestania === 'patrones' && (
         <Patrones
@@ -83,7 +107,7 @@ export default function App() {
           onMapa={(d) => {
             setDestino({ d, clave: Date.now() })
             setPestania('riesgo')
-            history.replaceState(null, '', ' ')
+            history.replaceState(null, '', '#riesgo')
           }}
         />
       )}

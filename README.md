@@ -34,6 +34,7 @@ python pipeline/06_dataset_modelo.py       # tabla celda × hora 2019-2025 con t
 python pipeline/07_entrenar_modelos.py     # Poisson, Random Forest y LightGBM + SHAP (~4 min)
 python pipeline/08_exportar_riesgo_web.py  # 840 escenarios de riesgo para la web
 python pipeline/09_patrones.py             # patrones del modelo validados con los datos
+python pipeline/10_capas_web.py            # recorridos de avenidas (tránsito animado) y comunas (mapa sin internet)
 ```
 
 | Paso | Qué hace |
@@ -47,6 +48,7 @@ python pipeline/09_patrones.py             # patrones del modelo validados con l
 | 07 | Entrena con 2019–2023, evalúa con 2024–2025, explica con SHAP, reentrena el LightGBM final con todo |
 | 08 | Clima (5) × día (7) × hora (24) = 840 mapas, cuantizados a 1 byte en escala log (`riesgo.json`) |
 | 09 | Patrones del modelo (clima × hora, víctimas, zonas nocturnas, domingos, interacciones SHAP), cada uno contrastado con tasas observadas e IC 95 % (`patrones.json`, `reports/patrones.md`) |
+| 10 | Recorridos aproximados de 135 tramos de avenidas y autopistas a partir de las celdas H3 (`avenidas.json`) y comunas simplificadas para el mapa de respaldo sin internet (`comunas.json`) |
 
 ### Clasificación del clima (`pipeline/clima.py`)
 
@@ -130,6 +132,35 @@ métrica es levemente optimista; con hojas chicas sobreajustaba y quedaba por de
 
 **Escenarios de la web:** para cada clima se usan los valores típicos (mediana) de las horas reales con
 esa condición a esa hora del día; se promedian enero, abril, julio y octubre; día no feriado.
+
+
+## Presentación (modo historia)
+
+La pestaña **Historia** es la presentación: se avanza con la rueda, deslizando, con flechas o con un
+clicker; **N** abre las notas del orador en otra ventana, **M** el sonido, **I** repite la intro.
+
+- **Antesala:** mientras entra la gente, la ciudad aparece dibujada solo con sus 62.737 siniestros;
+  titilan los que ocurrieron a esta misma hora del día y una línea en vivo dice cada cuántos minutos
+  el modelo espera uno en toda la ciudad, con la hora y el clima de ahora.
+- **Intro y hero:** un video real (`web/src/assets/intro-choque.mp4`) de una avenida de noche con lluvia, con los
+  créditos encima; en el segundo 13 un auto se despista y choca contra la pantalla, que estalla como un parabrisas
+  (`vidrioRoto.ts`); el sonido (lluvia, suspenso y choque) se genera con Tone.js. Si el video no se puede
+  reproducir, se usa la escena 3D de `web/src/intro3d/`. El vidrio roto deja un punto en el centro: un siniestro
+  real del dataset (un martes a las 22 con tormenta, elegido en la zona de mayor riesgo). La intro se
+  desvanece sobre el mapa, que espera a nivel calle con ese mismo punto; la cámara se aleja mientras se
+  encienden los 62.737, del más cercano al más lejano, y recién ahí aparece la pregunta.
+- **Actos:** el pulso (siniestros hora por hora, con el mapa pasando de noche a día), la pregunta con
+  votación, sol, lluvia, noche, tormenta, el patrón, **la respuesta** ("de día, sí; de noche, no", con
+  el resultado de la votación), la validación, la parte técnica y el riesgo de ahora mismo.
+- **Votación en vivo:** el acto 2 muestra un QR que lleva a `votar.html` (publicada en GitHub Pages).
+  Cada voto viaja por [ntfy.sh](https://ntfy.sh), un servicio público de mensajes sin cuenta, y la
+  pantalla los cuenta en tiempo real; el resultado se revela en el acto de la lluvia. Requiere que
+  `votar.html` esté publicada (se publica sola al hacer merge a `main`). Si nadie vota, se puede
+  marcar la apuesta del presentador tocando una de las barras.
+- **Clima y sonido:** lluvia, tormenta con relámpagos, sol, niebla y luz de día/noche sobre el mapa;
+  sonido generado con Tone.js (sin archivos de audio). El sonido arranca con el primer clic.
+- **Sin internet:** si el mapa base no carga, la web pasa sola a un mapa de respaldo con las comunas.
+  El clima en vivo y la votación sí necesitan conexión.
 
 ## Ver el mapa
 
