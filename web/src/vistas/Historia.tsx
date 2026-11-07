@@ -646,6 +646,7 @@ export function Historia({ riesgo, siniestros: s, patrones, modelo, onExplorar }
 
   const bloqueo = useRef(0)
   const acumulado = useRef(0)
+  const toqueY = useRef<number | null>(null)
   useEffect(() => {
     const el = raiz.current
     if (!el) return
@@ -661,10 +662,13 @@ export function Historia({ riesgo, siniestros: s, patrones, modelo, onExplorar }
         bloqueo.current = t + 1100
       }
     }
-    let y0 = 0
-    const alTocar = (e: TouchEvent) => (y0 = e.touches[0].clientY)
+    // El inicio del toque va en una ref: este efecto se vuelve a registrar en cada render y, en los actos que
+    // se redibujan solos (el reloj de "El pulso"), una variable local se perdía entre el toque y el soltar.
+    const alTocar = (e: TouchEvent) => (toqueY.current = e.touches[0].clientY)
     const alSoltar = (e: TouchEvent) => {
-      if (libre) return
+      const y0 = toqueY.current
+      toqueY.current = null
+      if (libre || y0 === null) return
       const dy = y0 - e.changedTouches[0].clientY
       if (Math.abs(dy) > 50) ir(acto + Math.sign(dy))
     }
