@@ -478,6 +478,14 @@ body.modo-presentacion .legend { left: auto; right: 24px; bottom: 80px; }
 .h-saltar:hover { color: var(--ink); border-color: var(--ink-3); }
 
 .h-panel { position: absolute; left: clamp(24px, 6vw, 96px); top: 50%; transform: translateY(-46%); width: min(560px, calc(100% - 140px)); z-index: 2; text-shadow: 0 2px 22px rgba(0, 0, 0, 0.65); }
+/* Fondo translúcido de los textos de cada acto: se leen sobre cualquier parte del mapa (nombres de localidades,
+   calles, hexágonos) sin tapar demasiado. El texto queda alineado donde estaba: el recuadro crece hacia afuera. */
+.h-panel:not(.h-portada) { padding: 26px 30px 24px; background: rgba(8, 10, 13, 0.6); backdrop-filter: blur(12px) saturate(1.1); -webkit-backdrop-filter: blur(12px) saturate(1.1); border: 1px solid rgba(255, 255, 255, 0.07); border-radius: 18px; box-shadow: 0 18px 50px rgba(0, 0, 0, 0.35); animation: h-panel-entra 0.5s ease-out both; }
+.historia:not(.parte-tecnica) .h-panel:not(.h-portada) { left: max(10px, calc(clamp(24px, 6vw, 96px) - 30px)); width: min(620px, calc(100% - 110px)); }
+.h-panel:not(.h-portada) .h-titulo { margin-bottom: 18px; }
+.h-panel:not(.h-portada) > :last-child { margin-bottom: 0; }
+@keyframes h-panel-entra { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .h-panel:not(.h-portada) { animation: none; } }
 .h-kicker { margin: 0 0 16px; display: flex; align-items: center; gap: 9px; font-family: var(--mono); font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-2); }
 .h-titulo { margin: 0 0 22px; font-size: clamp(32px, 4.4vw, 58px); font-weight: 600; line-height: 1.04; letter-spacing: -0.03em; text-wrap: balance; }
 .h-cifra { margin: 0 0 18px; display: flex; flex-direction: column; gap: 4px; }
@@ -565,6 +573,7 @@ body.modo-presentacion .legend { left: auto; right: 24px; bottom: 80px; }
   .h-barra { padding: 14px 16px; }
   .h-barra .brand-sub, .h-saltar { display: none; }
   .h-panel { left: 16px; right: 16px; width: auto; top: auto; bottom: 64px; transform: none; }
+  .historia:not(.parte-tecnica) .h-panel:not(.h-portada) { left: 10px; right: 10px; width: auto; padding: 18px 18px 16px; }
   .h-portada { left: 16px; right: 16px; top: 50%; bottom: auto; transform: translateY(-50%); width: auto; }
   .h-velo, .acto-ahora .h-velo { background: linear-gradient(0deg, rgba(5, 6, 8, 0.92) 0%, rgba(5, 6, 8, 0.5) 50%, transparent 75%); }
   .h-actos { right: 10px; gap: 10px; }
@@ -711,7 +720,8 @@ body:has(.notas) { overflow: auto; }
 
 /* ---------- historia: "¿el modelo acierta?" con los datos en primer plano ---------- */
 .acto-acierta .h-velo { background: linear-gradient(90deg, rgba(5, 6, 8, 0.94) 0%, rgba(5, 6, 8, 0.82) 42%, rgba(5, 6, 8, 0.35) 66%, transparent 82%); }
-.acto-acierta .h-panel { width: min(760px, calc(100% - 140px)); }
+.historia.acto-acierta .h-panel:not(.h-portada) { width: min(820px, calc(100% - 110px)); }
+.acto-acierta .h-cuerpo { max-width: none; }
 .acto-acierta .h-cuerpo { font-size: clamp(19px, 1.75vw, 25px); color: var(--ink); max-width: 34ch; margin-bottom: 26px; }
 .h-resalte { font-family: var(--mono); color: #ff7a52 !important; font-size: 1.35em; font-weight: 500 !important; }
 .h-duelo { display: flex; flex-direction: column; gap: 18px; margin-bottom: 22px; }
@@ -735,7 +745,7 @@ body:has(.notas) { overflow: auto; }
    Historia: el patrón y la parte técnica ("Detrás de los datos")
    ===================================================================== */
 .acto-patron .h-velo { background: linear-gradient(90deg, rgba(5, 6, 8, 0.93) 0%, rgba(5, 6, 8, 0.8) 50%, rgba(5, 6, 8, 0.3) 75%, transparent 90%); }
-.acto-patron .h-panel { width: min(820px, calc(100% - 140px)); }
+.historia.acto-patron .h-panel:not(.h-portada) { width: min(880px, calc(100% - 110px)); }
 .acto-patron .h-titulo { font-size: clamp(28px, 3.4vw, 46px); }
 .h-grafico { margin: 4px 0 18px; padding: 16px 18px 12px; background: rgba(11, 13, 15, 0.55); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 14px; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
 .h-curva { display: block; width: 100%; height: auto; overflow: visible; }
@@ -830,3 +840,7 @@ body:has(.notas) { overflow: auto; }
   .h-shap-fila { grid-template-columns: 130px 1fr; }
 }
 @media (prefers-reduced-motion: reduce) { .h-pipeline::before { animation: none; } }
+
+@media (max-width: 760px) {
+  .historia.acto-acierta .h-panel:not(.h-portada), .historia.acto-patron .h-panel:not(.h-portada) { width: auto; }
+}

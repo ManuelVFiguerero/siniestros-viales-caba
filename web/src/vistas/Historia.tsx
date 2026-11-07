@@ -781,7 +781,6 @@ export function Historia({ riesgo, siniestros: s, patrones, modelo, onExplorar }
         const veces = Math.round(pulso.max / Math.max(1, pulso.min))
         return (
           <>
-            <p className="h-kicker h-anim">Acto {acto} · El pulso</p>
             <h2 className="h-titulo">La ciudad choca al ritmo de su día.</h2>
             <p className="h-cifra h-anim">
               <span className="h-num h-reloj">{hhmm(h)}</span>
@@ -801,7 +800,7 @@ export function Historia({ riesgo, siniestros: s, patrones, modelo, onExplorar }
               ))}
             </svg>
             <p className="h-cuerpo h-anim">
-              A las {pulso.hMin} de la mañana, <b>{fmtNum(pulso.min)}</b>. A las {pulso.hMax}, <b>{fmtNum(pulso.max)}</b>: {veces} veces más. Las avenidas dibujan el mapa; la hora marca el ritmo.
+              A las {pulso.hMin} de la mañana, <b>{fmtNum(pulso.min)}</b>. A las {pulso.hMax}, <b>{fmtNum(pulso.max)}</b>: {veces} veces más. Las avenidas dibujan el mapa, la hora marca el ritmo.
             </p>
           </>
         )
@@ -809,9 +808,8 @@ export function Historia({ riesgo, siniestros: s, patrones, modelo, onExplorar }
       case 'pregunta':
         return (
           <>
-            <p className="h-kicker h-anim">Acto {acto} · La pregunta</p>
             <h2 className="h-titulo">Cuando llueve, ¿hay más choques o menos?</h2>
-            <p className="h-cuerpo h-anim">Cruzamos cada siniestro con el clima de esa hora y ese lugar. Antes de mirar: escaneen el código y voten.</p>
+            <p className="h-cuerpo h-anim">Cruzamos cada siniestro con el clima de esa hora y ese lugar. Escaneen el código y voten.</p>
             <div className="h-votos h-anim" aria-live="polite">
               {(['mas', 'menos'] as const).map((v) => {
                 const cuenta = v === 'mas' ? votacion.mas : votacion.menos
@@ -834,26 +832,26 @@ export function Historia({ riesgo, siniestros: s, patrones, modelo, onExplorar }
       case 'sol':
         return (
           <>
-            <p className="h-kicker h-anim">Acto {acto} · Martes, 14:00 · Despejado</p>
             <h2 className="h-titulo">Un martes cualquiera, a pleno sol.</h2>
             <p className="h-cifra h-anim">
               <span className="h-num" data-cuenta={total} data-dec="2">{fmtNum(total, 2)}</span>
               <span className="h-num-nota">siniestros esperados en esa hora, en toda la ciudad</span>
             </p>
-            <p className="h-cuerpo h-anim">El mapa pinta el riesgo que predice el modelo en cada zona de ~350 m. Las luces son el tránsito: esta es la línea de base.</p>
+            <p className="h-cuerpo h-anim">El mapa pinta el riesgo que predice el modelo en cada zona.</p>
           </>
         )
       case 'lluvia':
         return (
           <>
-            <p className="h-kicker h-anim">Acto {acto} · Martes, 14:00 · Lluvia</p>
             <h2 className="h-titulo">Empieza a llover… y los siniestros bajan.</h2>
             <p className="h-cifra h-anim">
               <span className="h-num down" data-cuenta={cifras.lluviaDia} data-signo="1">{conSigno(cifras.lluviaDia)}</span>
               <span className="h-num-nota">de día con lluvia, frente a horas despejadas comparables</span>
             </p>
             <p className="h-cuerpo h-anim">
-              No son calles más seguras: sale menos gente. Ciclistas <b>{conSigno(cifras.ciclistasDia)}</b>, motociclistas <b>{conSigno(cifras.motosDia)}</b>.
+              No son calles más seguras, sale menos gente.
+              <br />
+              Ciclistas <b>{conSigno(cifras.ciclistasDia)}</b>, motociclistas <b>{conSigno(cifras.motosDia)}</b>.
             </p>
             {revelacion && <p className="h-nota h-anim">{revelacion}</p>}
           </>
@@ -861,7 +859,6 @@ export function Historia({ riesgo, siniestros: s, patrones, modelo, onExplorar }
       case 'noche':
         return (
           <>
-            <p className="h-kicker h-anim">Acto {acto} · Martes, {hhmm(Math.round(horaVis))} · Lluvia</p>
             <h2 className="h-titulo">Pero se hace de noche, y la lluvia sigue.</h2>
             <p className="h-cifra h-anim">
               <span className="h-num up" data-cuenta={cifras.lluviaNoche} data-signo="1">{conSigno(cifras.lluviaNoche)}</span>
@@ -875,7 +872,6 @@ export function Historia({ riesgo, siniestros: s, patrones, modelo, onExplorar }
       case 'tormenta':
         return (
           <>
-            <p className="h-kicker h-anim">Acto {acto} · Martes, 22:00 · Tormenta</p>
             <h2 className="h-titulo">El peor momento de la semana.</h2>
             <p className="h-cifra h-anim">
               <span className="h-num up" data-cuenta={cifras.tormentaNoche} data-signo="1">{conSigno(cifras.tormentaNoche)}</span>
@@ -893,7 +889,6 @@ export function Historia({ riesgo, siniestros: s, patrones, modelo, onExplorar }
       case 'patron':
         return (
           <>
-            <p className="h-kicker h-anim">Acto {acto} · El patrón</p>
             <h2 className="h-titulo">No fue casualidad: el efecto cambia con la hora.</h2>
             <div className="h-grafico h-anim">
               <CurvaHora patrones={patrones} />
@@ -907,15 +902,15 @@ export function Historia({ riesgo, siniestros: s, patrones, modelo, onExplorar }
           </>
         )
       case 'respuesta': {
+        // Sin votos (ni apuesta del presentador) no se muestra nada.
         const votos =
           votacion.total > 0
             ? `Ustedes votaron ${fmtNum(pctMas)} % «más choques» y ${fmtNum(100 - pctMas)} % «menos». Los dos bandos tenían razón: depende de la hora.`
             : apuesta
               ? `La apuesta fue «${apuesta === 'mas' ? 'más' : 'menos'} choques». Las dos respuestas tenían razón: depende de la hora.`
-              : '«Más choques» y «menos choques» tenían razón a la vez: depende de la hora.'
+              : null
         return (
           <>
-            <p className="h-kicker h-anim">Acto {acto} · La respuesta</p>
             <h2 className="h-titulo">¿Nos hace más cuidadosos? De día, sí. De noche, no.</h2>
             <div className="h-veredicto h-anim">
               <div className="h-veredicto-lado dia">
@@ -944,14 +939,13 @@ export function Historia({ riesgo, siniestros: s, patrones, modelo, onExplorar }
               </div>
             </div>
             <p className="h-cuerpo h-anim">La lluvia no nos vuelve más cuidadosos: nos deja en casa. Los que salen igual, de noche, quedan más expuestos.</p>
-            <p className="h-nota h-anim">{votos}</p>
+            {votos && <p className="h-nota h-anim">{votos}</p>}
           </>
         )
       }
       case 'datos':
         return (
           <>
-            <p className="h-kicker h-anim">Detrás de los datos · Las fuentes</p>
             <h2 className="h-titulo">Tres datasets abiertos, cruzados hora por hora.</h2>
             <Fuentes total={n} filas={modelo.datos.filas} />
           </>
@@ -959,7 +953,6 @@ export function Historia({ riesgo, siniestros: s, patrones, modelo, onExplorar }
       case 'pipeline':
         return (
           <>
-            <p className="h-kicker h-anim">Detrás de los datos · El pipeline</p>
             <h2 className="h-titulo">De un Excel a 840 mapas de riesgo.</h2>
             <Pipeline celdaHoras={modelo.datos.celda_horas} />
             <p className="h-letra h-anim">Python (pandas, H3, scikit-learn, LightGBM, SHAP) · web en React, deck.gl y MapLibre · un script por paso, todo reproducible.</p>
@@ -968,7 +961,6 @@ export function Historia({ riesgo, siniestros: s, patrones, modelo, onExplorar }
       case 'modelo':
         return (
           <>
-            <p className="h-kicker h-anim">Detrás de los datos · El modelo</p>
             <h2 className="h-titulo">Tres modelos, una validación honesta.</h2>
             <div className="h-dos">
               <div>
@@ -986,7 +978,6 @@ export function Historia({ riesgo, siniestros: s, patrones, modelo, onExplorar }
       case 'limites':
         return (
           <>
-            <p className="h-kicker h-anim">Detrás de los datos · Lo que falta</p>
             <h2 className="h-titulo">Lo que todavía no sabemos.</h2>
             <Limites />
           </>
@@ -994,10 +985,11 @@ export function Historia({ riesgo, siniestros: s, patrones, modelo, onExplorar }
       case 'acierta':
         return (
           <>
-            <p className="h-kicker h-anim">Acto {acto} · ¿El modelo acierta?</p>
-            <h2 className="h-titulo">Lo pusimos a prueba con dos años que nunca vio.</h2>
+            <h2 className="h-titulo">Comparamos el modelo con dos años que nunca vio.</h2>
             <p className="h-cuerpo h-anim">
-              De cada 10 siniestros de {cifras.test}, <b className="h-resalte">{fmtNum(Math.round(cifras.captura / 10))}</b> cayeron en el 10 % de zonas y horas que el modelo marcó como más riesgosas.
+              De cada 10 siniestros de {cifras.test}, <b className="h-resalte">{fmtNum(Math.round(cifras.captura / 10))}</b> cayeron en el 10 % de zonas y horas que
+              <br />
+              el modelo marcó como más riesgosas.
             </p>
             <div className="h-duelo h-anim" aria-label="Captura del modelo frente al mapa clásico">
               <div className="h-duelo-fila modelo">
@@ -1011,17 +1003,11 @@ export function Historia({ riesgo, siniestros: s, patrones, modelo, onExplorar }
                 <b data-cuenta={cifras.capturaBase} data-suf=" %" data-retraso="1.6">{cifras.capturaBase} %</b>
               </div>
             </div>
-            <p className="h-letra h-anim">
-              Puntos blancos: siniestros reales de {cifras.test} que cayeron en las zonas marcadas. Entrenado con {cifras.train}, evaluado con {cifras.test}.
-            </p>
           </>
         )
       case 'ahora':
         return (
           <>
-            <p className="h-kicker h-anim">
-              <i className="live-dot" aria-hidden /> Ahora mismo · {DIAS[ahora.dia]} {String(ahora.hora).padStart(2, '0')}:{String(ahora.minuto).padStart(2, '0')} · {NOMBRE_CLIMA[condicionVivo]}
-            </p>
             <h2 className="h-titulo">¿Y hoy, en Buenos Aires?</h2>
             <p className="h-cifra h-anim">
               <span className="h-num" data-cuenta={total} data-dec="2">{fmtNum(total, 2)}</span>
@@ -1036,9 +1022,7 @@ export function Historia({ riesgo, siniestros: s, patrones, modelo, onExplorar }
             </div>
             <p className="h-cuerpo h-anim">El clima pesa poco en el modelo: no crea el riesgo, lo cambia de horario. El dónde y el cuándo mandan.</p>
             <div className="h-acciones h-anim">
-              <button className="h-primario" onClick={entrarLibre}>Ver el mapa <kbd>espacio</kbd></button>
-              <button className="h-secundario" onClick={onExplorar}>Explorar todo →</button>
-              <button className="h-secundario" onClick={() => ir(1)}>Volver a empezar</button>
+              <button className="h-primario" onClick={onExplorar}>Explorar todo →</button>
             </div>
           </>
         )
@@ -1176,7 +1160,6 @@ export function Historia({ riesgo, siniestros: s, patrones, modelo, onExplorar }
           <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden><path d="M3 6l5 5 5-5" fill="none" stroke="currentColor" strokeWidth="1.6" /></svg>
         </button>
       )}
-      {!libre && id === 'ahora' && <p className="h-pista">Barra espaciadora: ver el mapa</p>}
       {fase === 'inicio' && (
         <Antesala
           siniestros={s}

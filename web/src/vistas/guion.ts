@@ -172,7 +172,7 @@ export const GUION: Guion[] = [
     notas: [
       'Clima real de este momento según el pronóstico. Si llueve afuera, llueve en la pantalla.',
       'Cierre: el clima pesa 4 % del modelo; el dónde (57 %) y el cuándo (39 %) mandan. El clima no crea el riesgo, lo cambia de horario.',
-      'Barra espaciadora: mapa libre para responder preguntas ("¿y mi barrio?"). Buscar la calle arriba a la derecha.',
+      'Tocar "Explorar todo" para pasar a la app y responder preguntas en el mapa ("¿y mi barrio?").',
       'Limitaciones si queda tiempo: sin datos de tránsito (exposición), ERA5 de ~25 km, solo siniestros con víctimas.',
     ],
   },
