@@ -142,7 +142,10 @@ clicker; **N** abre las notas del orador en otra ventana, **M** el sonido, **I**
 - **Antesala:** mientras entra la gente, la ciudad aparece dibujada solo con sus 62.737 siniestros;
   titilan los que ocurrieron a esta misma hora del día y una línea en vivo dice cada cuántos minutos
   el modelo espera uno en toda la ciudad, con la hora y el clima de ahora.
-- **Intro y hero:** el choque contra el "vidrio" deja un punto en el centro de la pantalla: un siniestro
+- **Intro y hero:** un video real (`web/src/assets/intro-choque.mp4`) de una avenida de noche con lluvia, con los
+  créditos encima; en el segundo 13 un auto se despista y choca contra la pantalla, que estalla como un parabrisas
+  (`vidrioRoto.ts`); el sonido (lluvia, suspenso y choque) se genera con Tone.js. Si el video no se puede
+  reproducir, se usa la escena 3D de `web/src/intro3d/`. El vidrio roto deja un punto en el centro: un siniestro
   real del dataset (un martes a las 22 con tormenta, elegido en la zona de mayor riesgo). La intro se
   desvanece sobre el mapa, que espera a nivel calle con ese mismo punto; la cámara se aleja mientras se
   encienden los 62.737, del más cercano al más lejano, y recién ahí aparece la pregunta.

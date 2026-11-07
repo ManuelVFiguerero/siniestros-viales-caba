@@ -20,7 +20,7 @@ export const GUION: Guion[] = [
     segundos: 35,
     notas: [
       'Mientras entra la gente: dejar la antesala en pantalla (la ciudad dibujada con sus choques y el ritmo en vivo según el modelo).',
-      'Para arrancar: tocar "Comenzar con sonido" (el audio solo arranca con un clic). Corre la intro del choque (~15 s); I la repite para ensayar, Esc la saltea.',
+      'Para arrancar: tocar "Comenzar con sonido" (el audio solo arranca con un clic). Corre la intro (~21 s): el video de la avenida con los créditos, lluvia y música de suspenso que crecen y, en el segundo 13, el auto que choca contra la pantalla y la rompe. I la repite para ensayar, Esc la saltea.',
       'No hablar durante el choque ni durante el alejamiento: el silencio es parte del efecto. El punto del impacto es un siniestro real del dataset (martes, 22 h, con tormenta).',
       'Cuando la cámara termina de alejarse y aparece la pregunta: presentarse y lanzarla en voz alta, sin responderla: "¿La lluvia nos hace más cuidadosos?".',
       'Tocar "Empezar".',

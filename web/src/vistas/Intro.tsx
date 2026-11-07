@@ -1,5 +1,8 @@
-// Intro de la presentación (~15 s): créditos sobre una ruta mojada, un auto que se acerca a la pantalla,
-// el choque contra el "vidrio" y, en silencio, el punto del impacto: un siniestro real del dataset.
+// Intro de la presentación (~21 s): un video real de una avenida de noche con lluvia (assets/intro-choque.mp4)
+// con los créditos encima; en el segundo 13 un auto se despista y viene hacia la pantalla. En el impacto, el
+// último cuadro estalla como un parabrisas (vidrioRoto.ts). El sonido es propio (introSonido.ts): lluvia y música
+// de suspenso que se intensifican hasta el choque. Del impacto queda un punto: un siniestro real del dataset.
+// Si el video no se puede reproducir, la intro usa la escena 3D (intro3d/) o, sin WebGL, una versión plana.
 // La intro se desvanece sobre el mapa, que ya espera a nivel calle con ese mismo punto en el centro de
 // la pantalla (corte por coincidencia); desde ahí la portada se aleja hasta mostrar los 62.737.
 // Esc o clic en "Saltar" la terminan.
@@ -9,6 +12,13 @@ import { crearSonidoIntro, type SonidoIntro } from '../ambiente/introSonido'
 import { prefiereMenosMovimiento } from '../ambiente/luz'
 import { fmtNum } from '../riesgo'
 import { iniciarEscena3D } from '../intro3d/escena'
+import videoIntro from '../assets/intro-choque.mp4'
+import { romperVidrio, type Rotura } from './vidrioRoto'
+
+/** Momentos del video (segundos): el auto se despista y llega a la pantalla (el video termina ahí). */
+const VIDEO = { despiste: 12.45, impacto: 12.94 }
+/** Encuadre del video (igual que .i-video en index.css): el punto del impacto queda en el centro de la pantalla. */
+const ENCUADRE = { escala: 1.1, dx: -0.011, dy: -0.0462 }
 
 export const INTEGRANTES = ['Tomas Joaquin Cortes', 'Dante Leandro Aguilar', 'Walter Jaldin', 'Manuel Vicente Figuerero']
 
@@ -77,12 +87,139 @@ export function Intro({ conSonido, total, frase, onRevelar, onFin }: Props) {
 
   // ---------- escena 3D (three.js); si no hay WebGL, la versión plana de abajo ----------
   const canvas3dRef = useRef<HTMLCanvasElement>(null)
-  const [sin3d, setSin3d] = useState(false)
+  const videoRef = useRef<HTMLVideoElement>(null)
+  const roturaRef = useRef<HTMLCanvasElement>(null)
+  const [modo, setModo] = useState<'video' | '3d' | 'plano'>('video')
+  const sin3d = modo === 'plano'
+  const conVideo = modo === 'video'
   useEffect(() => {
+    if (modo !== '3d') return
     const destruir = iniciarEscena3D(canvas3dRef.current!, estado, prefiereMenosMovimiento())
-    if (!destruir) setSin3d(true)
+    if (!destruir) setModo('plano')
     return () => destruir?.()
-  }, [])
+  }, [modo])
+
+  // ---------- intro con video: los créditos y el resto del guion siguen el reloj del video ----------
+  useEffect(() => {
+    if (!conVideo) return
+    const el = raiz.current!
+    const v = videoRef.current!
+    const calma = prefiereMenosMovimiento()
+    const q = (s: string) => el.querySelectorAll(s)
+    let sonido: SonidoIntro | null = null
+    let tl: gsap.core.Timeline | null = null
+    let rotura: Rotura | null = null
+    let cancelado = false
+    const e = estado.current
+
+    const armar = () => {
+      if (cancelado || tl) return
+      if (conSonido) {
+        // Lluvia y música de suspenso propias; el sonido del video queda de fondo y se va antes del despiste.
+        sonido = crearSonidoIntro()
+        sonido.empezar()
+      }
+      const t = gsap.timeline({ onComplete: () => terminar.current() })
+      tl = t
+      t.fromTo(q('.i-kicker'), { autoAlpha: 0, z: -420, y: 0 }, { autoAlpha: 1, z: 0, duration: 1.3, ease: 'expo.out' }, 0.6)
+      t.fromTo(q('.i-materia'), { autoAlpha: 0, z: -700, y: 0, filter: 'blur(14px)' }, { autoAlpha: 1, z: 0, filter: 'blur(0px)', duration: 1.6, ease: 'expo.out' }, 1.4)
+      q('.i-nombre').forEach((n, k) => {
+        const tn = 3.2 + k * 1.3
+        t.fromTo(n, { autoAlpha: 0, z: -360, y: 0, filter: 'blur(8px)' }, { autoAlpha: 1, z: 0, filter: 'blur(0px)', duration: 0.9, ease: 'expo.out' }, tn)
+        t.call(() => sonido?.golpe(k), [], tn)
+      })
+      t.fromTo(q('.i-proyecto'), { autoAlpha: 0, y: 8 }, { autoAlpha: 1, y: 0, duration: 1, ease: 'power2.out' }, 8.6)
+      // Los créditos se van hacia la cámara antes de que el auto se despiste.
+      t.to(q('.i-creditos'), { autoAlpha: 0, z: 260, filter: 'blur(10px)', duration: 0.8, ease: 'power2.in' }, VIDEO.despiste - 1.6)
+
+      // Sonido: la tensión crece toda la intro y se dispara en los últimos segundos (motor, bocina, frenada).
+      if (sonido) {
+        const s = sonido
+        t.to(v, { volume: 0, duration: 0.9, ease: 'power1.in' }, VIDEO.despiste - 1.1)
+        t.to(e, { p: 0.5, duration: 8, ease: 'power1.in', onUpdate: () => s.acercar(e.p) }, 2.6)
+        t.to(e, { p: 1, duration: VIDEO.impacto - 10.6, ease: 'power3.in', onUpdate: () => s.acercar(e.p) }, 10.6)
+        t.call(() => s.bocina(), [], VIDEO.despiste - 0.35)
+        t.call(() => s.frenada(), [], VIDEO.despiste + 0.05)
+      }
+
+      // Impacto: el último cuadro estalla como un parabrisas, destello y sacudón.
+      const i = VIDEO.impacto
+      t.call(
+        () => {
+          v.pause()
+          sonido?.choque()
+          rotura = romperVidrio(roturaRef.current!, v, ENCUADRE, calma)
+        },
+        [],
+        i,
+      )
+      if (!calma) {
+        t.fromTo(q('.i-flash'), { opacity: 1 }, { opacity: 0, duration: 0.55, ease: 'power2.out', immediateRender: false }, i)
+        t.fromTo(q('.i-sacudon'), { x: -24, y: 16 }, { x: 0, y: 0, duration: 0.65, ease: 'elastic.out(1.2, 0.25)', immediateRender: false }, i)
+      }
+      // Cuando la imagen se apaga, en el centro de las grietas queda un punto: el siniestro del mapa.
+      const f = i + 2.3
+      t.fromTo(q('.i-foco'), { autoAlpha: 0, scale: 0.2 }, { autoAlpha: 1, scale: 1, duration: 0.9, ease: 'back.out(2.2)' }, f)
+      t.fromTo(q('.i-frase-1'), { autoAlpha: 0, y: 10 }, { autoAlpha: 1, y: 0, duration: 0.9, ease: 'power2.out' }, f + 0.6)
+      t.fromTo(q('.i-frase-2'), { autoAlpha: 0, y: 10 }, { autoAlpha: 1, y: 0, duration: 0.9, ease: 'power2.out' }, f + 2.0)
+      t.to(q('.i-frase'), { autoAlpha: 0, duration: 0.7 }, f + 3.7)
+      t.call(() => revelar.current?.(), [], f + 3.8)
+      t.to(el, { backgroundColor: 'rgba(3, 4, 5, 0)', duration: 1.2, ease: 'power1.inOut' }, f + 4.1)
+      t.to(q('.i-sacudon, .i-saltar'), { autoAlpha: 0, duration: 0.6 }, f + 4.1)
+      t.to(q('.i-foco'), { autoAlpha: 0, duration: 0.5 }, f + 5.0)
+      t.set(el, { autoAlpha: 0 }, f + 5.5)
+    }
+    // Si la reproducción se traba un momento, el guion se realinea con el video (que manda).
+    const sincronizar = () => {
+      if (!tl || v.ended || v.paused) return
+      if (Math.abs(tl.time() - v.currentTime) > 0.12) tl.time(v.currentTime)
+    }
+    gsap.ticker.add(sincronizar)
+
+    v.muted = !conSonido
+    v.volume = 0.5
+    v.currentTime = 0
+    v.play()
+      .then(armar)
+      .catch(() => {
+        // Sin permiso para sonar (no hubo clic): sigue en silencio. Si ni así arranca, escena 3D.
+        v.muted = true
+        v.play().then(armar).catch(() => !cancelado && setModo('3d'))
+      })
+
+    const saltarConFundido = () => {
+      tl?.kill()
+      rotura?.detener()
+      sonido?.detener()
+      v.pause()
+      gsap.to(el, { autoAlpha: 0, duration: 0.45, ease: 'power1.out', onComplete: () => terminar.current() })
+    }
+    saltarRef.current = saltarConFundido
+    const alMover = (ev: PointerEvent) => {
+      if (calma) return
+      const rx = (ev.clientY / window.innerHeight - 0.5) * -8
+      const ry = (ev.clientX / window.innerWidth - 0.5) * 10
+      gsap.to(el.querySelector('.i-creditos'), { rotationX: rx, rotationY: ry, duration: 1.2, ease: 'power2.out', overwrite: 'auto' })
+    }
+    window.addEventListener('pointermove', alMover)
+    const saltar = (ev: KeyboardEvent) => {
+      if (ev.key === 'Escape') {
+        ev.preventDefault()
+        saltarConFundido()
+      }
+    }
+    window.addEventListener('keydown', saltar)
+    return () => {
+      cancelado = true
+      gsap.ticker.remove(sincronizar)
+      window.removeEventListener('keydown', saltar)
+      window.removeEventListener('pointermove', alMover)
+      tl?.kill()
+      rotura?.detener()
+      sonido?.detener()
+      v.pause()
+    }
+  }, [conSonido, conVideo])
 
   // ---------- versión plana (canvas 2D): respaldo para equipos sin WebGL ----------
   useEffect(() => {
@@ -247,8 +384,9 @@ export function Intro({ conSonido, total, frase, onRevelar, onFin }: Props) {
     }
   }, [sin3d])
 
-  // ---------- guion temporal ----------
+  // ---------- guion temporal de la escena 3D / plana (respaldo sin video) ----------
   useEffect(() => {
+    if (conVideo) return
     const el = raiz.current!
     const calma = prefiereMenosMovimiento()
     let sonido: SonidoIntro | null = null
@@ -331,12 +469,16 @@ export function Intro({ conSonido, total, frase, onRevelar, onFin }: Props) {
       tl.kill()
       sonido?.detener()
     }
-  }, [conSonido])
+  }, [conSonido, conVideo])
 
   return (
     <div className="intro" ref={raiz}>
       <div className="i-sacudon">
-        <canvas ref={canvas3dRef} className="i-ruta" style={{ display: sin3d ? 'none' : 'block' }} />
+        {conVideo && (
+          <video ref={videoRef} className="i-ruta i-video" src={videoIntro} playsInline preload="auto" muted={!conSonido} onError={() => setModo('3d')} />
+        )}
+        {conVideo && <canvas ref={roturaRef} className="i-ruta" aria-hidden />}
+        <canvas ref={canvas3dRef} className="i-ruta" style={{ display: modo === '3d' ? 'block' : 'none' }} />
         <canvas ref={canvasRef} className="i-ruta" style={{ display: sin3d ? 'block' : 'none' }} />
         <div className="i-creditos">
           <p className="i-kicker">Trabajo práctico</p>
@@ -346,6 +488,7 @@ export function Intro({ conSonido, total, frase, onRevelar, onFin }: Props) {
               <li key={n} className="i-nombre"><span>{n}</span></li>
             ))}
           </ul>
+          <p className="i-proyecto">Siniestros viales y clima · Ciudad de Buenos Aires</p>
         </div>
         <svg className="i-grieta" viewBox="0 0 1920 1080" preserveAspectRatio="xMidYMid slice" aria-hidden>
           {lineas.map((d, k) => (

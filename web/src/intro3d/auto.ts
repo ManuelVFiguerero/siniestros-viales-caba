@@ -171,7 +171,7 @@ export function crearAuto(): Auto {
     opticas,
     encender(luces, altas) {
       const fuerza = luces * (1 + altas * 2.2)
-      faros.forEach((f) => (f.intensity = 130 * fuerza))
+      faros.forEach((f) => (f.intensity = 85 * fuerza))
       opticas.emissiveIntensity = 2.2 * fuerza
       // El halo es chico en metros: de lejos se ve como un destello y de cerca no tapa la pantalla.
       brillos.forEach((b) => {

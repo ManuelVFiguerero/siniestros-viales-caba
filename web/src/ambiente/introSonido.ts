@@ -11,7 +11,7 @@ export interface SonidoIntro {
   acercar: (p: number) => void
   bocina: () => void
   frenada: () => void
-  /** Impacto: corta la música y queda en silencio. */
+  /** Impacto: golpe, estruendo y vidrio que se rompe y cae; corta la música y queda en silencio. */
   choque: () => void
   /** Corta todo de inmediato (saltar la intro). */
   detener: () => void
@@ -127,7 +127,7 @@ export function crearSonidoIntro(): SonidoIntro {
       ritmo.start('2m')
       transporte.start('+0.05')
       colchon.triggerAttack(ACORDES[0])
-      filtroColchon.frequency.rampTo(1800, 7)
+      filtroColchon.frequency.rampTo(1800, 11)
       lluvia.start()
       gLluvia.gain.rampTo(0.12, 1.5)
       motor.start()
@@ -179,8 +179,14 @@ export function crearSonidoIntro(): SonidoIntro {
       transporte.stop(t)
       golpeSeco.triggerAttackRelease('A0', '2n', t)
       estruendo.triggerAttackRelease('2n', t)
-      for (let k = 0; k < 9; k++) vidrio.triggerAttackRelease(3000 + Math.random() * 3500, '32n', t + 0.03 + k * (0.03 + Math.random() * 0.06), 0.3 + Math.random() * 0.5)
-      setTimeout(() => apagarTodo(false), 2500)
+      // El parabrisas estalla (ráfaga densa) y después caen los pedazos, cada vez más espaciados y suaves.
+      let tv = t + 0.02
+      for (let k = 0; k < 30; k++) {
+        const caida = k / 30
+        vidrio.triggerAttackRelease(2600 + Math.random() * 4200, '32n', tv, (1 - caida) ** 1.3 * (0.4 + Math.random() * 0.6))
+        tv += 0.015 + caida * caida * 0.16 * (0.5 + Math.random())
+      }
+      setTimeout(() => apagarTodo(false), 3600)
     },
     detener() {
       apagarTodo(true)

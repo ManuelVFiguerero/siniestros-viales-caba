@@ -1,5 +1,5 @@
-// Escena 3D de la intro: una calle porteña de noche con lluvia, veredas, edificios con ventanas
-// encendidas, faroles de sodio y el auto que viene de frente hasta chocar contra la cámara ("la pantalla").
+// Escena 3D de la intro: una avenida porteña de noche con lluvia (ver ciudad.ts) y el auto que viene de frente
+// hasta chocar contra la cámara ("la pantalla").
 // Lee el mismo estado que anima GSAP en Intro.tsx: p (0–1, cercanía), luces y altas.
 import * as THREE from 'three'
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js'
@@ -8,6 +8,7 @@ import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPa
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js'
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js'
 import { crearAuto, RADIO_RUEDA } from './auto'
+import { crearCiudad } from './ciudad'
 
 export interface EstadoIntro {
   p: number
@@ -46,75 +47,9 @@ export function iniciarEscena3D(canvas: HTMLCanvasElement, estado: { current: Es
 
   escena.add(new THREE.HemisphereLight('#2a3550', '#0a0a0a', 0.5))
 
-  // ---------- calle ----------
-  const asfalto = new THREE.MeshStandardMaterial({ color: '#16181b', roughness: 1, metalness: 0.05, roughnessMap: texturaCharcos() })
-  asfalto.roughnessMap!.wrapS = asfalto.roughnessMap!.wrapT = THREE.RepeatWrapping
-  asfalto.roughnessMap!.repeat.set(2, 60)
-  const calle = new THREE.Mesh(new THREE.PlaneGeometry(10, 760), asfalto)
-  calle.rotation.x = -Math.PI / 2
-  calle.position.z = -360
-  escena.add(calle)
-
-  const pintura = new THREE.MeshStandardMaterial({ color: '#c9a24a', emissive: '#c9a24a', emissiveIntensity: 0.12, roughness: 0.6 })
-  const guiones = new THREE.InstancedMesh(new THREE.PlaneGeometry(0.14, 3), pintura, 70)
-  const m = new THREE.Matrix4()
-  for (let k = 0; k < 70; k++) {
-    m.makeRotationX(-Math.PI / 2).setPosition(0, 0.012, -k * 9)
-    guiones.setMatrixAt(k, m)
-  }
-  escena.add(guiones)
-  const blanco = new THREE.MeshStandardMaterial({ color: '#cfd2d6', roughness: 0.6 })
-  for (const x of [-4.6, 4.6]) {
-    const borde = new THREE.Mesh(new THREE.PlaneGeometry(0.12, 760), blanco)
-    borde.rotation.x = -Math.PI / 2
-    borde.position.set(x, 0.012, -360)
-    escena.add(borde)
-    const vereda = new THREE.Mesh(new THREE.BoxGeometry(3, 0.16, 760), new THREE.MeshStandardMaterial({ color: '#1c1e21', roughness: 0.85 }))
-    vereda.position.set(Math.sign(x) * 6.5, 0.08, -360)
-    escena.add(vereda)
-  }
-
-  // ---------- edificios con ventanas encendidas ----------
-  const ventanas = texturaVentanas()
-  const fachada = new THREE.MeshStandardMaterial({ color: '#0d0e11', roughness: 0.9, emissive: '#ffd39a', emissiveMap: ventanas, emissiveIntensity: 0.4 })
-  const n = 90
-  const edificios = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), fachada, n)
-  let z = 4
-  for (let k = 0; k < n; k++) {
-    const lado = k % 2 === 0 ? -1 : 1
-    if (lado === -1) z -= 9 + Math.random() * 7
-    const ancho = 5 + Math.random() * 5
-    const alto = 9 + Math.random() ** 1.6 * 34
-    const fondo = 8 + Math.random() * 7
-    m.compose(new THREE.Vector3(lado * (8 + ancho / 2), alto / 2, z - Math.random() * 4), new THREE.Quaternion(), new THREE.Vector3(ancho, alto, fondo))
-    edificios.setMatrixAt(k, m)
-  }
-  escena.add(edificios)
-
-  // ---------- faroles de luz de sodio ----------
-  const poste = new THREE.MeshStandardMaterial({ color: '#1a1b1d', roughness: 0.7, metalness: 0.4 })
-  const lampara = new THREE.MeshStandardMaterial({ color: '#ffb36b', emissive: '#ffb36b', emissiveIntensity: 3.5 })
-  for (let k = 0; k < 18; k++) {
-    const lado = k % 2 === 0 ? -1 : 1
-    const zf = -6 - k * 22
-    const columna = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.09, 7), poste)
-    columna.position.set(lado * 5.1, 3.5, zf)
-    const brazo = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.06, 0.06), poste)
-    brazo.position.set(lado * 4.45, 6.95, zf)
-    const foco = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.08, 0.22), lampara)
-    foco.position.set(lado * 3.85, 6.88, zf)
-    escena.add(columna, brazo, foco)
-    if (k < 6) {
-      const luz = new THREE.PointLight('#ffad62', 55, 26, 2)
-      luz.position.set(lado * 3.85, 6.6, zf)
-      escena.add(luz)
-    }
-  }
-
-  // Resplandor anaranjado de la ciudad al fondo.
-  const resplandor = new THREE.Mesh(new THREE.PlaneGeometry(900, 160), new THREE.MeshBasicMaterial({ map: texturaResplandor(), transparent: true, fog: false, depthWrite: false }))
-  resplandor.position.set(0, 40, -700)
-  escena.add(resplandor)
+  // ---------- la avenida: calzada, veredas, edificios, árboles, autos, faroles y semáforos (ciudad.ts) ----------
+  const ciudad = crearCiudad()
+  escena.add(ciudad.grupo)
 
   // ---------- lluvia ----------
   const GOTAS = calma ? 900 : 2600
@@ -269,23 +204,6 @@ function canvasTextura(w: number, h: number, dibujar: (g: CanvasRenderingContext
   return t
 }
 
-/** Rugosidad del asfalto: charcos (zonas lisas que reflejan) sobre asfalto áspero. */
-function texturaCharcos() {
-  return canvasTextura(256, 256, (g) => {
-    g.fillStyle = 'rgb(165,165,165)'
-    g.fillRect(0, 0, 256, 256)
-    for (let k = 0; k < 26; k++) {
-      const x = Math.random() * 256
-      const y = Math.random() * 256
-      const r = 10 + Math.random() * 40
-      const grad = g.createRadialGradient(x, y, 0, x, y, r)
-      grad.addColorStop(0, 'rgb(110,110,110)')
-      grad.addColorStop(1, 'rgba(165,165,165,0)')
-      g.fillStyle = grad
-      g.fillRect(x - r, y - r, r * 2, r * 2)
-    }
-  })
-}
 
 function texturaDisco() {
   return canvasTextura(
@@ -304,42 +222,4 @@ function texturaDisco() {
   )
 }
 
-function texturaVentanas() {
-  const t = canvasTextura(
-    128,
-    256,
-    (g) => {
-      g.fillStyle = '#000'
-      g.fillRect(0, 0, 128, 256)
-      for (let y = 6; y < 250; y += 14) {
-        for (let x = 6; x < 124; x += 16) {
-          if (Math.random() < 0.2) {
-            const tibia = Math.random() < 0.8
-            g.fillStyle = tibia ? `rgba(255, ${190 + Math.random() * 40}, 120, ${0.55 + Math.random() * 0.45})` : 'rgba(170, 200, 255, 0.7)'
-            g.fillRect(x, y, 9, 8)
-          }
-        }
-      }
-    },
-    true,
-  )
-  t.wrapS = t.wrapT = THREE.RepeatWrapping
-  t.repeat.set(1.5, 2)
-  return t
-}
 
-function texturaResplandor() {
-  return canvasTextura(
-    16,
-    128,
-    (g) => {
-      const grad = g.createLinearGradient(0, 0, 0, 128)
-      grad.addColorStop(0, 'rgba(60, 40, 30, 0)')
-      grad.addColorStop(0.7, 'rgba(140, 80, 40, 0.35)')
-      grad.addColorStop(1, 'rgba(180, 100, 50, 0.55)')
-      g.fillStyle = grad
-      g.fillRect(0, 0, 16, 128)
-    },
-    true,
-  )
-}
