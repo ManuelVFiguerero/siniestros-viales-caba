@@ -1,5 +1,8 @@
-// Intro de la presentación (~13 s): créditos sobre una ruta mojada, un auto que se acerca a la pantalla,
-// el choque contra el "vidrio" y, en silencio, la cifra real. Esc o clic en "Saltar" la terminan.
+// Intro de la presentación (~15 s): créditos sobre una ruta mojada, un auto que se acerca a la pantalla,
+// el choque contra el "vidrio" y, en silencio, el punto del impacto: un siniestro real del dataset.
+// La intro se desvanece sobre el mapa, que ya espera a nivel calle con ese mismo punto en el centro de
+// la pantalla (corte por coincidencia); desde ahí la portada se aleja hasta mostrar los 62.737.
+// Esc o clic en "Saltar" la terminan.
 import { useEffect, useMemo, useRef, useState } from 'react'
 import gsap from 'gsap'
 import { crearSonidoIntro, type SonidoIntro } from '../ambiente/introSonido'
@@ -13,8 +16,10 @@ interface Props {
   /** El sonido ya fue habilitado con un clic. */
   conSonido: boolean
   total: number
-  desde: number
-  hasta: number
+  /** Cómo fue el siniestro del impacto, por ejemplo "un martes de 2022, a las 22, con tormenta". */
+  frase: string
+  /** La intro empieza a desvanecerse y deja ver el mapa de abajo. */
+  onRevelar?: () => void
   onFin: () => void
 }
 
@@ -55,16 +60,19 @@ function grietas(cx: number, cy: number): string[] {
   return lineas
 }
 
-export function Intro({ conSonido, total, desde, hasta, onFin }: Props) {
+export function Intro({ conSonido, total, frase, onRevelar, onFin }: Props) {
   const raiz = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const estado = useRef({ p: 0, luces: 0, altas: 0, fin: false })
   const terminar = useRef(onFin)
+  const revelar = useRef(onRevelar)
   const saltarRef = useRef<() => void>(() => onFin())
-  const lineas = useMemo(() => grietas(960 + 40, 540 - 60), [])
+  // El impacto es el centro exacto de la pantalla: ahí mismo espera el punto en el mapa.
+  const lineas = useMemo(() => grietas(960, 540), [])
 
   useEffect(() => {
     terminar.current = onFin
+    revelar.current = onRevelar
   })
 
   // ---------- escena 3D (three.js); si no hay WebGL, la versión plana de abajo ----------
@@ -283,11 +291,18 @@ export function Intro({ conSonido, total, desde, hasta, onFin }: Props) {
     }
     tl.set(q('.i-grieta'), { autoAlpha: 1 }, 8.6)
     tl.fromTo(q('.i-grieta path'), { strokeDashoffset: 1600 }, { strokeDashoffset: 0, duration: 0.35, ease: 'power4.out', stagger: 0.008, immediateRender: false }, 8.62)
-    tl.to(q('.i-grieta'), { autoAlpha: 0, duration: 0.8 }, 10.0)
-    tl.to(q('.i-cifra'), { autoAlpha: 1, duration: 0.9 }, 10.6)
-    tl.to(q('.i-cifra'), { autoAlpha: 0, duration: 0.7 }, 13.4)
-    // Fundido a la portada (que ya está debajo) en vez de un corte.
-    tl.to(el, { autoAlpha: 0, duration: 1.1, ease: 'power1.inOut' }, 13.9)
+    // Las grietas se apagan y del impacto queda un punto: el siniestro real que vamos a ver en el mapa.
+    tl.to(q('.i-grieta'), { autoAlpha: 0, duration: 1.1 }, 9.7)
+    tl.fromTo(q('.i-foco'), { autoAlpha: 0, scale: 0.2 }, { autoAlpha: 1, scale: 1, duration: 0.9, ease: 'back.out(2.2)' }, 9.9)
+    tl.fromTo(q('.i-frase-1'), { autoAlpha: 0, y: 10 }, { autoAlpha: 1, y: 0, duration: 0.9, ease: 'power2.out' }, 10.6)
+    tl.fromTo(q('.i-frase-2'), { autoAlpha: 0, y: 10 }, { autoAlpha: 1, y: 0, duration: 0.9, ease: 'power2.out' }, 12.2)
+    tl.to(q('.i-frase'), { autoAlpha: 0, duration: 0.7 }, 14.2)
+    // Corte por coincidencia: se desvanece todo menos el punto, que ya está en el mapa en el mismo lugar.
+    tl.call(() => revelar.current?.(), [], 14.3)
+    tl.to(el, { backgroundColor: 'rgba(3, 4, 5, 0)', duration: 1.2, ease: 'power1.inOut' }, 14.6)
+    tl.to(q('.i-sacudon, .i-saltar'), { autoAlpha: 0, duration: 0.6 }, 14.6)
+    tl.to(q('.i-foco'), { autoAlpha: 0, duration: 0.5 }, 15.5)
+    tl.set(el, { autoAlpha: 0 }, 16.0)
 
     const saltarConFundido = () => {
       tl.kill()
@@ -339,9 +354,11 @@ export function Intro({ conSonido, total, desde, hasta, onFin }: Props) {
         </svg>
       </div>
       <div className="i-flash" />
-      <p className="i-cifra">
-        Entre {desde} y {hasta} hubo <b>{fmtNum(total)}</b> siniestros con víctimas en la Ciudad de Buenos Aires.
-      </p>
+      <i className="i-foco" aria-hidden />
+      <div className="i-frases">
+        <p className="i-frase i-frase-1">Pasó {frase}.</p>
+        <p className="i-frase i-frase-2">Fue uno de <b>{fmtNum(total)}</b>.</p>
+      </div>
       <button
         className="i-saltar"
         onClick={() => saltarRef.current()}

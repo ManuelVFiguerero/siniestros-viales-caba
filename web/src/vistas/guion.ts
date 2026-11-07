@@ -1,6 +1,6 @@
 // Guion de la historia: lo que ve el público (nombre) y lo que lee el orador en la ventana de notas.
 export type IdActo =
-  | 'portada' | 'ciudad' | 'pregunta' | 'sol' | 'lluvia' | 'noche' | 'tormenta' | 'patron' | 'acierta'
+  | 'portada' | 'ciudad' | 'pregunta' | 'sol' | 'lluvia' | 'noche' | 'tormenta' | 'patron' | 'respuesta' | 'acierta'
   | 'datos' | 'pipeline' | 'modelo' | 'limites' | 'ahora'
 
 export interface Guion {
@@ -17,21 +17,24 @@ export const GUION: Guion[] = [
   {
     id: 'portada',
     nombre: 'Portada',
-    segundos: 20,
+    segundos: 35,
     notas: [
-      'Antes de empezar: en la pantalla de inicio tocar "Comenzar con sonido" (el audio solo arranca con un clic). Corre la intro del choque (~13 s); I la repite para ensayar, Esc la saltea.',
-      'Después del silencio: presentarse y lanzar la pregunta en voz alta, sin responderla: "¿La lluvia nos hace más cuidadosos?".',
+      'Mientras entra la gente: dejar la antesala en pantalla (la ciudad dibujada con sus choques y el ritmo en vivo según el modelo).',
+      'Para arrancar: tocar "Comenzar con sonido" (el audio solo arranca con un clic). Corre la intro del choque (~15 s); I la repite para ensayar, Esc la saltea.',
+      'No hablar durante el choque ni durante el alejamiento: el silencio es parte del efecto. El punto del impacto es un siniestro real del dataset (martes, 22 h, con tormenta).',
+      'Cuando la cámara termina de alejarse y aparece la pregunta: presentarse y lanzarla en voz alta, sin responderla: "¿La lluvia nos hace más cuidadosos?".',
       'Tocar "Empezar".',
     ],
   },
   {
     id: 'ciudad',
-    nombre: 'La ciudad',
-    segundos: 30,
+    nombre: 'El pulso',
+    segundos: 40,
     notas: [
-      'Dejar que caigan los puntos unos segundos en silencio.',
       'Fuente: BA Data, siniestros con víctimas 2019–2025. 65.818 registros, 62.737 con coordenadas y hora válidas.',
-      'Señalar que el dibujo de la ciudad aparece solo: avenidas y autopistas concentran los choques.',
+      'El reloj recorre las 24 horas de un día: se encienden los siniestros de cada hora y el mapa pasa de noche a día.',
+      'Dos ideas: las avenidas y autopistas dibujan el mapa (el dónde) y la hora marca el ritmo (el cuándo). A las 4 de la mañana hay diez veces menos siniestros que a las 17.',
+      'Anticipar: al final vamos a ver que el dónde y el cuándo explican casi todo el modelo.',
     ],
   },
   {
@@ -93,6 +96,17 @@ export const GUION: Guion[] = [
       'Las líneas son lo que aprendió el modelo, hora por hora. Las marcas con barras son lo observado en los datos por franja, con intervalo de confianza del 95 %.',
       'De día la lluvia queda debajo de "igual" (menos siniestros); de noche, arriba. Con tormenta el pico está a las 22 h.',
       'El modelo encontró la inversión solo, sin que se la indiquemos: por eso confiamos en el patrón.',
+    ],
+  },
+  {
+    id: 'respuesta',
+    nombre: 'La respuesta',
+    segundos: 35,
+    notas: [
+      'Volver a la pregunta del título y responderla en una frase: de día, sí; de noche, no.',
+      'De día la lluvia saca gente de la calle (−16 %); de noche queda el tránsito imprescindible, con poca visibilidad y asfalto mojado (+9 %; con tormenta a las 22 h, +56 %).',
+      'Recordar la votación que aparece en pantalla: los dos bandos tenían razón, depende de la hora.',
+      'Puente: "¿Y podemos confiar en el modelo?".',
     ],
   },
   {

@@ -134,6 +134,21 @@ métrica es levemente optimista; con hojas chicas sobreajustaba y quedaba por de
 esa condición a esa hora del día; se promedian enero, abril, julio y octubre; día no feriado.
 
 
+## Presentación (modo historia)
+
+La pestaña **Historia** es la presentación: se avanza con la rueda, deslizando, con flechas o con un
+clicker; **N** abre las notas del orador en otra ventana, **M** el sonido, **I** repite la intro.
+
+- **Antesala:** mientras entra la gente, la ciudad aparece dibujada solo con sus 62.737 siniestros;
+  titilan los que ocurrieron a esta misma hora del día y una línea en vivo dice cada cuántos minutos
+  el modelo espera uno en toda la ciudad, con la hora y el clima de ahora.
+- **Intro y hero:** el choque contra el "vidrio" deja un punto en el centro de la pantalla: un siniestro
+  real del dataset (un martes a las 22 con tormenta, elegido en la zona de mayor riesgo). La intro se
+  desvanece sobre el mapa, que espera a nivel calle con ese mismo punto; la cámara se aleja mientras se
+  encienden los 62.737, del más cercano al más lejano, y recién ahí aparece la pregunta.
+- **Actos:** el pulso (siniestros hora por hora, con el mapa pasando de noche a día), la pregunta con
+  votación, sol, lluvia, noche, tormenta, el patrón, **la respuesta** ("de día, sí; de noche, no", con
+  el resultado de la votación), la validación, la parte técnica y el riesgo de ahora mismo.
 - **Votación en vivo:** el acto 2 muestra un QR que lleva a `votar.html` (publicada en GitHub Pages).
   Cada voto viaja por [ntfy.sh](https://ntfy.sh), un servicio público de mensajes sin cuenta, y la
   pantalla los cuenta en tiempo real; el resultado se revela en el acto de la lluvia. Requiere que

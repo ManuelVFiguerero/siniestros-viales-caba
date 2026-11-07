@@ -1,6 +1,9 @@
-// Home: la historia en 9 actos. Se avanza con la rueda del mouse, deslizando, con flechas o con un clicker
+// Home: la historia en actos. Se avanza con la rueda del mouse, deslizando, con flechas o con un clicker
 // (PageDown / PageUp). El mapa de fondo, el clima en pantalla, el tránsito y el sonido siguen a cada acto.
-// Teclas: N abre las notas del orador · M sonido · en el último acto, espacio libera el mapa.
+// Teclas: N abre las notas del orador · M sonido · I repite la intro · en el último acto, espacio libera el mapa.
+//
+// Arranque: antesala (habilita el sonido) → intro del choque → hero: el mapa espera a nivel calle sobre el
+// siniestro real del impacto y se aleja mientras se encienden los 62.737, del más cercano al más lejano.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { PolygonLayer, ScatterplotLayer } from '@deck.gl/layers'
 import { DataFilterExtension } from '@deck.gl/extensions'
@@ -28,6 +31,7 @@ import { GUION, type IdActo } from './guion'
 import { CANAL, type MensajeNotas } from './Notas'
 import { ComparacionModelos, CurvaHora, Fuentes, Limites, Pipeline, Shap } from './historiaTecnica'
 import { Intro } from './Intro'
+import { Antesala } from './Antesala'
 
 gsap.registerPlugin(useGSAP, SplitText)
 
@@ -51,10 +55,28 @@ const COLOR_PUNTO: [number, number, number, number] = [255, 150, 70, 190]
 const COLOR_PUNTO_TENUE: [number, number, number, number] = [255, 150, 70, 60]
 const COLOR_ACIERTO: [number, number, number, number] = [255, 248, 225, 240]
 const COLOR_FUERA: [number, number, number, number] = [120, 132, 145, 80]
+const COLOR_PULSO: [number, number, number, number] = [255, 196, 130, 235]
+const COLOR_FOCO: [number, number, number, number] = [255, 140, 84, 255]
+
+/** Cámara del hero: a nivel calle sobre el siniestro de la intro. */
+const CAMARA_FOCO = { zoom: 16.6, pitch: 58, bearing: -28 }
+/** Duración del alejamiento del hero (ms) y vueltas del reloj del acto "El pulso" (s por día). */
+const DESPEGUE_MS = 8200
+const DIA_PULSO_S = 18
+
+type Hero = 'foco' | 'despegue' | 'listo'
+
+const CON_CLIMA: Record<string, string> = {
+  tormenta: 'con tormenta',
+  lluvia: 'con lluvia',
+  niebla: 'con niebla',
+  nublado: 'con el cielo nublado',
+  despejado: 'con el cielo despejado',
+}
 
 /** Escenario del modelo (día 0 = lunes) y cámara de cada acto; los textos están en guion.ts. */
 const ESCENA: Record<IdActo, { escena: { dia: number; hora: number; clima: string } | null; camara: Camara }> = {
-  portada: { escena: null, camara: { zoom: 10.2, pitch: 0, bearing: 0 } },
+  portada: { escena: null, camara: { zoom: 11.05, pitch: 40, bearing: -12 } },
   ciudad: { escena: null, camara: { zoom: 11.25, pitch: 28, bearing: -10 } },
   pregunta: { escena: null, camara: { zoom: 11.05, pitch: 0, bearing: 0 } },
   sol: { escena: { dia: MARTES, hora: 14, clima: 'despejado' }, camara: { zoom: 11.55, pitch: 34, bearing: -14 } },
@@ -62,6 +84,7 @@ const ESCENA: Record<IdActo, { escena: { dia: number; hora: number; clima: strin
   noche: { escena: { dia: MARTES, hora: 22, clima: 'lluvia' }, camara: { zoom: 11.85, pitch: 46, bearing: 22 } },
   tormenta: { escena: { dia: MARTES, hora: 22, clima: 'tormenta' }, camara: { zoom: 12.4, pitch: 58, bearing: -28 } },
   patron: { escena: { dia: MARTES, hora: 22, clima: 'lluvia' }, camara: { zoom: 11.1, pitch: 20, bearing: 8 } },
+  respuesta: { escena: { dia: MARTES, hora: 22, clima: 'lluvia' }, camara: { zoom: 10.95, pitch: 8, bearing: 0 } },
   acierta: { escena: null, camara: { zoom: 11.2, pitch: 0, bearing: 0 } },
   datos: { escena: null, camara: { zoom: 10.8, pitch: 35, bearing: -20 } },
   pipeline: { escena: null, camara: { zoom: 10.7, pitch: 45, bearing: 15 } },
@@ -91,6 +114,16 @@ export function Historia({ riesgo, siniestros: s, patrones, modelo, onExplorar }
   // Antes de la portada: pantalla de inicio (habilita el sonido con un clic) y la intro del choque.
   const [fase, setFase] = useState<'inicio' | 'intro' | 'historia'>('inicio')
   const [sonidoIntro, setSonidoIntro] = useState(false)
+  // Hero de la portada: 'foco' (a nivel calle sobre el siniestro), 'despegue' (la cámara se aleja) y 'listo'.
+  const [hero, setHero] = useState<Hero>('foco')
+  const [horaPulso, setHoraPulso] = useState(0)
+  // El mapa queda tapado por la antesala y la intro: el clima en pantalla y las animaciones del mapa solo
+  // corren cuando se ve (desde que la intro empieza a desvanecerse), para no competir con la escena 3D.
+  const [revelando, setRevelando] = useState(false)
+  const mapaVisible = fase === 'historia' || revelando
+  useEffect(() => {
+    if (fase !== 'historia') setRevelando(false)
+  }, [fase])
   const { activo: sonido, encender, apagar } = useSonido()
   const ahora = useAhoraBA()
   const pronostico = usePronostico()
@@ -149,7 +182,6 @@ export function Historia({ riesgo, siniestros: s, patrones, modelo, onExplorar }
     })
     return { rango, porAnio }
   }, [s, n])
-  const anioActual = porAnio.find((p) => revelados <= p.hasta)?.anio ?? porAnio[porAnio.length - 1].anio
   // Primer índice (en el orden de caída) de 2024: los de la validación.
   const desdeTest = porAnio.find((p) => p.anio === 2023)?.hasta ?? 0
 
@@ -173,6 +205,7 @@ export function Historia({ riesgo, siniestros: s, patrones, modelo, onExplorar }
       grilla.set(k, [...(grilla.get(k) ?? []), i])
     })
     const enTop = new Uint8Array(n)
+    const celdaDe = new Int32Array(n)
     for (let j = 0; j < n; j++) {
       const gx = Math.floor(s.lon[j] / paso)
       const gy = Math.floor(s.lat[j] / paso)
@@ -188,12 +221,74 @@ export function Historia({ riesgo, siniestros: s, patrones, modelo, onExplorar }
             }
           }
       enTop[j] = mejor >= 0 ? top[mejor] : 0
+      celdaDe[j] = mejor
     }
-    return { media, top, enTop }
+    return { media, top, enTop, celdaDe }
   }, [riesgo, s, n])
 
+  // ---------- el siniestro de la intro: uno real, un martes a las 22 con tormenta, en una zona de riesgo alto ----------
+  const foco = useMemo(() => {
+    const C = s.dicts.condicion
+    const reglas: ((j: number) => boolean)[] = [
+      (j) => C[s.condicion[j]] === 'tormenta' && s.hora[j] === 22 && s.dia_semana[j] === MARTES,
+      (j) => (C[s.condicion[j]] === 'tormenta' || C[s.condicion[j]] === 'lluvia') && s.hora[j] >= 21 && s.dia_semana[j] < 5,
+      () => true,
+    ]
+    let elegido = 0
+    for (const regla of reglas) {
+      let mejor = -1
+      for (let j = 0; j < n; j++) {
+        const c = acierto.celdaDe[j]
+        if (c < 0 || !riesgo.celdas[c].via || !regla(j)) continue
+        if (mejor < 0 || acierto.media[c] > acierto.media[acierto.celdaDe[mejor]]) mejor = j
+      }
+      if (mejor >= 0) {
+        elegido = mejor
+        break
+      }
+    }
+    const j = elegido
+    const celda = riesgo.celdas[Math.max(0, acierto.celdaDe[j])]
+    const clima = C[s.condicion[j]]
+    const dia = DIAS[s.dia_semana[j]].toLowerCase()
+    return {
+      lon: s.lon[j],
+      lat: s.lat[j],
+      lugar: nombreCelda(celda),
+      comuna: celda.comuna,
+      clima,
+      momento: `${DIAS[s.dia_semana[j]]} · ${s.hora[j]} h · ${NOMBRE_CLIMA[clima] ?? clima} · ${s.anio[j]}`,
+      frase: `un ${dia} de ${s.anio[j]}, a las ${s.hora[j]}, ${CON_CLIMA[clima] ?? ''}`.trim(),
+    }
+  }, [s, n, riesgo, acierto])
+
+  // Orden de encendido del hero: del siniestro de la intro hacia afuera.
+  const rangoDist = useMemo(() => {
+    const kx = Math.cos((foco.lat * Math.PI) / 180)
+    const d = new Float32Array(n)
+    for (let j = 0; j < n; j++) d[j] = ((s.lon[j] - foco.lon) * kx) ** 2 + (s.lat[j] - foco.lat) ** 2
+    const idx = Array.from({ length: n }, (_, i) => i).sort((a, b) => d[a] - d[b])
+    const r = new Float32Array(n)
+    idx.forEach((i, k) => (r[i] = k))
+    return r
+  }, [s, n, foco])
+
+  // ---------- "El pulso": cuántos siniestros hay en cada hora del día ----------
+  const pulso = useMemo(() => {
+    const porHora = Array.from({ length: 24 }, () => 0)
+    const valor = new Float32Array(n)
+    for (let j = 0; j < n; j++) {
+      porHora[s.hora[j]]++
+      // Cada siniestro se enciende en un minuto al azar de su hora, para que el latido sea continuo.
+      valor[j] = s.hora[j] + Math.random()
+    }
+    const max = Math.max(...porHora)
+    const min = Math.min(...porHora)
+    return { porHora, valor, max, min, hMax: porHora.indexOf(max), hMin: porHora.indexOf(min) }
+  }, [s, n])
+
   // ---------- votación en vivo ----------
-  const votacion = useVotacion(id === 'pregunta' || id === 'lluvia')
+  const votacion = useVotacion(id === 'pregunta' || id === 'lluvia' || id === 'respuesta')
   useEffect(() => {
     if (id !== 'pregunta') return
     QRCode.toString(votacion.url, { type: 'svg', margin: 1, errorCorrectionLevel: 'M', color: { dark: '#0b0d0f', light: '#ebe9e4' } })
@@ -231,11 +326,18 @@ export function Historia({ riesgo, siniestros: s, patrones, modelo, onExplorar }
   // ---------- capas ----------
   const tecnico = GUION[acto].parte === 'tecnica'
   const mostrarPuntos = id === 'portada' || id === 'ciudad' || id === 'pregunta' || id === 'acierta' || tecnico
-  const tenue = id === 'pregunta' || tecnico
+  const tenue = id === 'pregunta' || id === 'ciudad' || tecnico
+  const enPortada = id === 'portada'
   const es3d = id === 'tormenta'
   const filtro = useMemo(() => new DataFilterExtension({ filterSize: 1 }), [])
   const datosPuntos = useMemo(() => ({ length: n }), [n])
-  const rangoFiltro: [number, number] = id === 'acierta' ? [desdeTest, Math.max(desdeTest, desdeTest + revelados - 1)] : [0, Math.max(0, revelados - 1)]
+  const rangoFiltro: [number, number] =
+    id === 'acierta' ? [desdeTest, Math.max(desdeTest, desdeTest + revelados - 1)]
+    : id === 'ciudad' ? [0, n]
+    : [0, Math.max(0, revelados - 1)]
+  // Ventana del latido: se encienden los de la hora que pasa y se apagan en ~1 h.
+  const rangoPulso: [number, number] = [horaPulso - 1.3, horaPulso]
+  const suavePulso: [number, number] = [horaPulso - 0.55, horaPulso - 0.04]
 
   const capas = (antesDe: string | undefined) => [
     new PolygonLayer<Celda>({
@@ -281,13 +383,41 @@ export function Historia({ riesgo, siniestros: s, patrones, modelo, onExplorar }
           ? (_: unknown, { index }: { index: number }) => (acierto.enTop[index] ? COLOR_ACIERTO : COLOR_FUERA)
           : tenue ? COLOR_PUNTO_TENUE : COLOR_PUNTO,
       getRadius: id === 'acierta' ? 38 : 22,
-      radiusMinPixels: id === 'acierta' ? 2 : 1.1,
+      radiusMinPixels: id === 'acierta' ? 2 : enPortada ? 1.4 : 1.1,
       radiusMaxPixels: 4,
-      getFilterValue: (_: unknown, { index }: { index: number }) => rango[index],
+      getFilterValue: (_: unknown, { index }: { index: number }) => (enPortada ? rangoDist[index] : rango[index]),
       filterRange: rangoFiltro,
       extensions: [filtro],
-      updateTriggers: { getFillColor: [id === 'acierta', tenue] },
+      updateTriggers: { getFillColor: [id === 'acierta', tenue], getFilterValue: [enPortada] },
       ...debajoDe(antesDe),
+    }),
+    new ScatterplotLayer({
+      id: 'pulso',
+      data: datosPuntos,
+      visible: id === 'ciudad',
+      getPosition: (_: unknown, { index }: { index: number }) => [s.lon[index], s.lat[index]],
+      getFillColor: COLOR_PULSO,
+      getRadius: 34,
+      radiusMinPixels: 1.7,
+      radiusMaxPixels: 5,
+      getFilterValue: (_: unknown, { index }: { index: number }) => pulso.valor[index],
+      filterRange: rangoPulso,
+      filterSoftRange: suavePulso,
+      extensions: [filtro],
+      ...debajoDe(antesDe),
+    }),
+    // El siniestro de la intro, el mismo punto que quedó en el "vidrio".
+    new ScatterplotLayer({
+      id: 'foco',
+      data: enPortada && hero !== 'listo' ? [foco] : [],
+      getPosition: (f: typeof foco) => [f.lon, f.lat],
+      getFillColor: COLOR_FOCO,
+      getLineColor: [255, 236, 214, 230],
+      stroked: true,
+      lineWidthUnits: 'pixels',
+      getLineWidth: 1.5,
+      radiusUnits: 'pixels',
+      getRadius: 7,
     }),
   ]
 
@@ -300,47 +430,91 @@ export function Historia({ riesgo, siniestros: s, patrones, modelo, onExplorar }
     const todos = viajes()
     return todos.slice(0, Math.round(todos.length * pasoDensidad))
   }, [pasoDensidad])
-  const animacion = useMemo(
-    () => (conTransito ? { velocidad: fClima.velocidad, capas: (t: number) => [capaTransito(datosTransito, t, es3d ? 0.6 : 1)] } : undefined),
-    [conTransito, fClima.velocidad, datosTransito, es3d],
-  )
+  const conAnillo = enPortada && hero !== 'listo' && mapaVisible
+  const animacion = useMemo(() => {
+    if (!conTransito && !conAnillo) return undefined
+    return {
+      velocidad: conTransito ? fClima.velocidad : 1,
+      capas: (t: number) => [
+        ...(conTransito ? [capaTransito(datosTransito, t, es3d ? 0.6 : 1)] : []),
+        ...(conAnillo ? anillosFoco(foco, t) : []),
+      ],
+    }
+  }, [conTransito, conAnillo, fClima.velocidad, datosTransito, es3d, foco])
 
   // ---------- cámara ----------
   useEffect(() => {
     const m = mapRef.current
     if (!m || !mapaListo || libre) return
     const cam = conf.camara
+    const mapa = m.getMap()
+    if (id === 'portada') {
+      if (hero === 'foco') {
+        // A nivel calle, con una deriva lenta para que la escena respire mientras corre la intro.
+        m.jumpTo({ center: [foco.lon, foco.lat], ...CAMARA_FOCO })
+        if (!mapaVisible) return
+        mapa.easeTo({ bearing: CAMARA_FOCO.bearing + 9, zoom: CAMARA_FOCO.zoom + 0.25, duration: 40000, easing: (t) => t })
+        return
+      }
+      if (hero === 'despegue') {
+        // easeTo (y no flyTo): el zoom baja de forma pareja, sin pasarse de largo y volver.
+        m.easeTo({ center: CENTRO, zoom: cam.zoom, pitch: cam.pitch, bearing: cam.bearing, duration: DESPEGUE_MS, easing: (t) => (t < 0.5 ? 4 * t ** 3 : 1 - (-2 * t + 2) ** 3 / 2), essential: true })
+        return
+      }
+      const orbitar = () => mapa.easeTo({ bearing: cam.bearing + 28, duration: 70000, easing: (t) => t })
+      const lejos = Math.abs(mapa.getZoom() - cam.zoom) > 0.3
+      if (mapa.isMoving() && !lejos) mapa.once('moveend', orbitar)
+      else if (lejos) {
+        m.flyTo({ center: CENTRO, zoom: cam.zoom, pitch: cam.pitch, bearing: cam.bearing, duration: 2200, essential: true })
+        mapa.once('moveend', orbitar)
+      } else orbitar()
+      return () => {
+        mapa.off('moveend', orbitar)
+      }
+    }
     let centro = CENTRO
     if (id === 'tormenta' && top.length) {
       const c = riesgo.celdas[top[0]].c
       centro = [(c[0] + CENTRO[0] * 2) / 3, (c[1] + CENTRO[1] * 2) / 3]
     }
-    m.flyTo({ center: centro, zoom: cam.zoom, pitch: cam.pitch, bearing: cam.bearing, duration: id === 'ciudad' ? 9000 : 2600, essential: true })
+    m.flyTo({ center: centro, zoom: cam.zoom, pitch: cam.pitch, bearing: cam.bearing, duration: id === 'ciudad' ? 5000 : 2600, essential: true })
     if (id === 'tormenta') {
-      const mapa = m.getMap()
       const orbitar = () => mapa.easeTo({ bearing: cam.bearing + 40, duration: 40000, easing: (t) => t })
       mapa.once('moveend', orbitar)
       return () => {
         mapa.off('moveend', orbitar)
       }
     }
-    // La cámara solo se mueve al cambiar de acto o al volver del mapa libre.
+    // La cámara solo se mueve al cambiar de acto, de fase del hero o al volver del mapa libre.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [acto, mapaListo, libre])
+  }, [acto, mapaListo, libre, hero, mapaVisible])
 
   // ---------- animaciones por acto ----------
   useEffect(() => {
-    if (id === 'ciudad' || id === 'acierta') {
-      const fin = id === 'ciudad' ? n : n - desdeTest
+    if (acto !== 0) setHero('listo') // volver a la portada muestra el estado final, sin repetir el alejamiento
+    if (id === 'acierta') {
       const o = { v: 0 }
       setRevelados(0)
-      const t = gsap.to(o, { v: fin, duration: id === 'ciudad' ? 9 : 6, ease: 'power1.in', delay: id === 'acierta' ? 1 : 0, onUpdate: () => setRevelados(Math.round(o.v)) })
+      const t = gsap.to(o, { v: n - desdeTest, duration: 6, ease: 'power1.in', delay: 1, onUpdate: () => setRevelados(Math.round(o.v)) })
+      return () => {
+        t.kill()
+      }
+    }
+    if (id === 'ciudad') {
+      // Un día entero cada DIA_PULSO_S segundos, en bucle; el estado se actualiza cada 5 minutos de reloj.
+      setRevelados(n)
+      const o = { h: 0 }
+      setHoraPulso(0)
+      const t = gsap.to(o, { h: 24, duration: DIA_PULSO_S, ease: 'none', repeat: -1, onUpdate: () => setHoraPulso(Math.round(o.h * 12) / 12) })
+      if (prefiereMenosMovimiento()) {
+        t.kill()
+        setHoraPulso(pulso.hMax + 0.99)
+      }
       return () => {
         t.kill()
       }
     }
     if (id === 'pregunta' || GUION[acto].parte === 'tecnica') setRevelados(n)
-    if (id === 'portada') setRevelados(0)
     if (id === 'noche') {
       const o = { h: 14 }
       setHoraVis(14)
@@ -353,6 +527,34 @@ export function Historia({ riesgo, siniestros: s, patrones, modelo, onExplorar }
     // Solo al entrar a cada acto.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [acto])
+
+  // ---------- hero: espera a nivel calle, se aleja encendiendo los siniestros y recién ahí aparece la pregunta ----------
+  useEffect(() => {
+    if (fase !== 'historia' || acto !== 0 || hero !== 'foco' || !mapaListo) return
+    if (prefiereMenosMovimiento()) {
+      setHero('listo')
+      return
+    }
+    const t = setTimeout(() => setHero('despegue'), 2600)
+    return () => clearTimeout(t)
+  }, [fase, acto, hero, mapaListo])
+  useEffect(() => {
+    if (acto !== 0) return
+    if (hero === 'listo') {
+      setRevelados(n)
+      return
+    }
+    if (hero === 'foco') {
+      setRevelados(0)
+      return
+    }
+    const o = { v: 1 }
+    setRevelados(1)
+    const t = gsap.to(o, { v: n, duration: (DESPEGUE_MS - 900) / 1000, ease: 'power3.in', delay: 0.5, onUpdate: () => setRevelados(Math.round(o.v)), onComplete: () => setHero('listo') })
+    return () => {
+      t.kill()
+    }
+  }, [hero, acto, n])
 
   // ---------- texto: entra palabra por palabra; las cifras cuentan solas; las barras crecen ----------
   useGSAP(
@@ -388,7 +590,7 @@ export function Historia({ riesgo, siniestros: s, patrones, modelo, onExplorar }
       // Con movimiento reducido el texto aparece directo, sin animación.
       if (prefiereMenosMovimiento()) tl.progress(1)
     },
-    { scope: raiz, dependencies: [acto, libre], revertOnUpdate: true },
+    { scope: raiz, dependencies: [acto, libre, hero === 'listo'], revertOnUpdate: true },
   )
 
   // ---------- notas del orador (ventana aparte, tecla N) ----------
@@ -411,6 +613,11 @@ export function Historia({ riesgo, siniestros: s, patrones, modelo, onExplorar }
   const ir = useCallback(
     (destino: number) => {
       const d = Math.min(ULTIMO, Math.max(0, destino))
+      // Durante el alejamiento del hero, el primer "siguiente" lo completa en vez de cambiar de acto.
+      if (acto === 0 && d === 1 && hero !== 'listo') {
+        setHero('listo')
+        return
+      }
       setLibre(false)
       setActo((a) => {
         // Salir de la portada con una tecla o la rueda cuenta como gesto: se puede encender el sonido.
@@ -418,7 +625,7 @@ export function Historia({ riesgo, siniestros: s, patrones, modelo, onExplorar }
         return d
       })
     },
-    [sonido, encender],
+    [sonido, encender, acto, hero],
   )
   useEffect(() => {
     const alMensaje = (e: MessageEvent<MensajeNotas>) => {
@@ -467,6 +674,7 @@ export function Historia({ riesgo, siniestros: s, patrones, modelo, onExplorar }
       if (objetivo.closest('input, select, textarea') || e.metaKey || e.ctrlKey || e.altKey) return
       if (e.key.toLowerCase() === 'i' && !libre) {
         setActo(0)
+        setHero('foco')
         setFase('intro')
         return
       }
@@ -537,14 +745,24 @@ export function Historia({ riesgo, siniestros: s, patrones, modelo, onExplorar }
 
   // ---------- ambiente: clima en pantalla, luz y sonido ----------
   const intensidadVivo = id === 'ahora' && !libre && climaVivo ? intensidadDeLluvia(climaVivo.precipitacion) : undefined
-  const horaAmbiente = id === 'ahora' && libre && libreEsc ? libreEsc.hora : horaVis
-  const luz = useMemo(() => luzDelDia(horaAmbiente), [horaAmbiente])
+  const horaAmbiente = id === 'ahora' && libre && libreEsc ? libreEsc.hora : id === 'ciudad' ? horaPulso : enPortada ? 22 : horaVis
+  // En la portada llueve: tormenta sobre el siniestro de la intro y lluvia mansa cuando aparece la pregunta.
+  const climaAmbiente = enPortada ? (hero === 'foco' && foco.clima === 'tormenta' ? 'tormenta' : 'lluvia') : climaEscena
+  const horaLuz = Math.round(horaAmbiente * 4) / 4 // el mapa base se recolorea cada 15 minutos de reloj
+  const luz = useMemo(() => luzDelDia(horaLuz), [horaLuz])
   const transitoSonido =
-    id === 'portada' ? 0.08
-    : id === 'ciudad' ? 0.12 + 0.8 * (revelados / n)
+    id === 'portada' ? (hero === 'listo' ? 0.12 : 0.05)
+    : id === 'ciudad' ? 0.1 + 0.85 * (pulso.porHora[Math.floor(horaPulso) % 24] / pulso.max)
     : id === 'pregunta' || id === 'acierta' || tecnico ? 0.25
     : Math.min(1, (perfilDespejado[horaEscena] / maxPerfil) * fClima.cantidad)
-  useAmbienteSonoro({ clima: climaEscena, hora: horaAmbiente, transito: transitoSonido, lluvia: intensidadVivo, sirena: id === 'tormenta', silencio: fase !== 'historia' })
+  useAmbienteSonoro({
+    clima: climaAmbiente,
+    hora: horaAmbiente,
+    transito: transitoSonido,
+    lluvia: intensidadVivo,
+    sirena: id === 'tormenta' || (enPortada && hero !== 'listo'),
+    silencio: fase !== 'historia',
+  })
 
   // ---------- texto de cada acto ----------
   const revelacion =
@@ -558,18 +776,36 @@ export function Historia({ riesgo, siniestros: s, patrones, modelo, onExplorar }
     switch (id) {
       case 'portada':
         return null
-      case 'ciudad':
+      case 'ciudad': {
+        const h = Math.floor(horaPulso) % 24
+        const veces = Math.round(pulso.max / Math.max(1, pulso.min))
         return (
           <>
-            <p className="h-kicker h-anim">Acto {acto} · La ciudad</p>
-            <h2 className="h-titulo">Cada punto es un siniestro con víctimas.</h2>
+            <p className="h-kicker h-anim">Acto {acto} · El pulso</p>
+            <h2 className="h-titulo">La ciudad choca al ritmo de su día.</h2>
             <p className="h-cifra h-anim">
-              <span className="h-num">{fmtNum(revelados)}</span>
-              <span className="h-num-nota">siniestros · {revelados ? anioActual : 2019}</span>
+              <span className="h-num h-reloj">{hhmm(h)}</span>
+              <span className="h-num-nota">
+                <b className="h-pulso-cuenta">{fmtNum(pulso.porHora[h])}</b> siniestros a esta hora, sumando 2019–2025
+              </span>
             </p>
-            <p className="h-cuerpo h-anim">Ciudad de Buenos Aires, 2019 a 2025. Siete años de choques, atropellos y caídas, uno por uno.</p>
+            <svg className="h-pulso h-anim" viewBox="0 0 480 96" role="img" aria-label="Siniestros por hora del día">
+              {pulso.porHora.map((v, k) => {
+                const alto = (v / pulso.max) * 78
+                return (
+                  <rect key={k} x={k * 20 + 2} y={80 - alto} width={16} height={alto} rx={2} className={k === h ? 'on' : k < h ? 'pasada' : ''} />
+                )
+              })}
+              {[0, 6, 12, 18].map((k) => (
+                <text key={k} x={k * 20 + 2} y={94} className="h-pulso-eje">{String(k).padStart(2, '0')} h</text>
+              ))}
+            </svg>
+            <p className="h-cuerpo h-anim">
+              A las {pulso.hMin} de la mañana, <b>{fmtNum(pulso.min)}</b>. A las {pulso.hMax}, <b>{fmtNum(pulso.max)}</b>: {veces} veces más. Las avenidas dibujan el mapa; la hora marca el ritmo.
+            </p>
           </>
         )
+      }
       case 'pregunta':
         return (
           <>
@@ -670,6 +906,48 @@ export function Historia({ riesgo, siniestros: s, patrones, modelo, onExplorar }
             <p className="h-cuerpo h-anim">De día, la lluvia saca gente de la calle. De noche, el riesgo sube. El modelo aprendió esa inversión solo, y los datos la confirman.</p>
           </>
         )
+      case 'respuesta': {
+        const votos =
+          votacion.total > 0
+            ? `Ustedes votaron ${fmtNum(pctMas)} % «más choques» y ${fmtNum(100 - pctMas)} % «menos». Los dos bandos tenían razón: depende de la hora.`
+            : apuesta
+              ? `La apuesta fue «${apuesta === 'mas' ? 'más' : 'menos'} choques». Las dos respuestas tenían razón: depende de la hora.`
+              : '«Más choques» y «menos choques» tenían razón a la vez: depende de la hora.'
+        return (
+          <>
+            <p className="h-kicker h-anim">Acto {acto} · La respuesta</p>
+            <h2 className="h-titulo">¿Nos hace más cuidadosos? De día, sí. De noche, no.</h2>
+            <div className="h-veredicto h-anim">
+              <div className="h-veredicto-lado dia">
+                <span className="h-veredicto-cuando">
+                  <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden>
+                    <circle cx="12" cy="12" r="4.2" fill="currentColor" />
+                    {Array.from({ length: 8 }, (_, k) => {
+                      const a = (k / 8) * Math.PI * 2
+                      return <line key={k} x1={12 + Math.cos(a) * 7} y1={12 + Math.sin(a) * 7} x2={12 + Math.cos(a) * 9.6} y2={12 + Math.sin(a) * 9.6} stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                    })}
+                  </svg>
+                  De día, con lluvia
+                </span>
+                <b className="h-num down" data-cuenta={cifras.lluviaDia} data-signo="1" data-retraso="0.9">{conSigno(cifras.lluviaDia)}</b>
+                <span className="h-veredicto-nota">Sale menos gente: caen ciclistas y motos.</span>
+              </div>
+              <div className="h-veredicto-lado noche">
+                <span className="h-veredicto-cuando">
+                  <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden>
+                    <path d="M15.5 3.5a8.5 8.5 0 1 0 5 15.2A9 9 0 0 1 15.5 3.5Z" fill="currentColor" />
+                  </svg>
+                  De noche, con lluvia
+                </span>
+                <b className="h-num up" data-cuenta={cifras.lluviaNoche} data-signo="1" data-retraso="1.3">{conSigno(cifras.lluviaNoche)}</b>
+                <span className="h-veredicto-nota">Con tormenta a las 22: <b>{conSigno(cifras.tormentaNoche)}</b>.</span>
+              </div>
+            </div>
+            <p className="h-cuerpo h-anim">La lluvia no nos vuelve más cuidadosos: nos deja en casa. Los que salen igual, de noche, quedan más expuestos.</p>
+            <p className="h-nota h-anim">{votos}</p>
+          </>
+        )
+      }
       case 'datos':
         return (
           <>
@@ -768,26 +1046,26 @@ export function Historia({ riesgo, siniestros: s, patrones, modelo, onExplorar }
   })()
 
   return (
-    <div className={`historia acto-${id}${libre ? ' es-libre' : ''}${tecnico ? ' parte-tecnica' : ''}`} ref={raiz}>
+    <div className={`historia acto-${id}${libre ? ' es-libre' : ''}${tecnico ? ' parte-tecnica' : ''}${enPortada && hero !== 'listo' ? ' hero-cine' : ''}`} ref={raiz}>
       <div className="h-mapa">
         <MapaBase
           mapRef={mapRef}
           layers={capas}
           luz={luz}
-          edificios={es3d || libre}
+          edificios={es3d || libre || (enPortada && hero !== 'listo')}
           interactivo={libre}
           animacion={animacion}
           onClick={alClic}
           onCargar={() => setMapaListo(true)}
         />
-        <EfectoClima
-          clima={climaEscena}
+        {mapaVisible && <EfectoClima
+          clima={climaAmbiente}
           hora={horaAmbiente}
           intensidad={intensidadVivo}
           fuerza={libre ? 'sutil' : 'pleno'}
-          vidrio={!libre && (id === 'lluvia' || id === 'noche' || id === 'tormenta' || (id === 'ahora' && !!intensidadVivo))}
+          vidrio={!libre && ((enPortada && hero !== 'listo') || id === 'lluvia' || id === 'noche' || id === 'tormenta' || (id === 'ahora' && !!intensidadVivo))}
           onRelampago={trueno}
-        />
+        />}
         <div className="h-velo" />
       </div>
 
@@ -809,7 +1087,20 @@ export function Historia({ riesgo, siniestros: s, patrones, modelo, onExplorar }
         </div>
       </header>
 
-      {id === 'portada' ? (
+      {id === 'portada' && hero !== 'listo' ? (
+        // La ficha entra recién cuando la intro deja ver el mapa.
+        mapaVisible && <div className={`h-hero h-hero-${hero}`} aria-live="polite">
+          <div className="h-foco-ficha">
+            <p className="h-foco-kicker">Siniestro con víctimas</p>
+            <p className="h-foco-lugar">Cerca de {foco.lugar} · Comuna {foco.comuna}</p>
+            <p className="h-foco-momento">{foco.momento}</p>
+          </div>
+          <p className="h-hero-cuenta">
+            <b>{fmtNum(Math.max(1, revelados))}</b>
+            <span>{revelados > 1 ? 'siniestros con víctimas' : 'siniestro con víctimas'} · 2019–2025</span>
+          </p>
+        </div>
+      ) : id === 'portada' ? (
         <section className="h-portada h-panel">
           <p className="h-kicker h-anim">Ciencia de Datos · Trabajo práctico</p>
           <h1 className="h-titulo">¿La lluvia nos hace más cuidadosos?</h1>
@@ -818,7 +1109,7 @@ export function Historia({ riesgo, siniestros: s, patrones, modelo, onExplorar }
           </p>
           <div className="h-acciones h-anim">
             <button className="h-primario" onClick={() => ir(1)}>Empezar</button>
-            <button className="h-secundario" onClick={() => { setSonidoIntro(sonido); setFase('intro') }}>Ver la intro de nuevo <kbd>I</kbd></button>
+            <button className="h-secundario" onClick={() => { setSonidoIntro(sonido); setHero('foco'); setFase('intro') }}>Ver la intro de nuevo <kbd>I</kbd></button>
           </div>
           <p className="h-ayuda h-anim">Avanzá con la rueda, deslizando, con ↓ → o con un clicker · N abre las notas del orador</p>
         </section>
@@ -887,51 +1178,50 @@ export function Historia({ riesgo, siniestros: s, patrones, modelo, onExplorar }
       )}
       {!libre && id === 'ahora' && <p className="h-pista">Barra espaciadora: ver el mapa</p>}
       {fase === 'inicio' && (
-        <section className="h-inicio">
-          <i className="h-orbe a" aria-hidden />
-          <i className="h-orbe b" aria-hidden />
-          <i className="h-orbe c" aria-hidden />
-          <div className="h-inicio-tarjeta">
-          <p className="i-kicker-fijo">Trabajo práctico · Ciencia de Datos</p>
-          <p className="h-inicio-titulo">Siniestros viales en la Ciudad de Buenos Aires</p>
-          <p className="h-inicio-nota">Recomendado con sonido · pantalla completa con F11</p>
-          <div className="h-acciones">
-            <button
-              className="h-primario"
-              onClick={async () => {
-                silencioElegido.current = false
-                await encender()
-                setSonidoIntro(true)
-                setFase('intro')
-              }}
-            >
-              Comenzar con sonido
-            </button>
-            <button
-              className="h-secundario"
-              onClick={() => {
-                silencioElegido.current = true
-                apagar()
-                setSonidoIntro(false)
-                setFase('intro')
-              }}
-            >
-              Sin sonido
-            </button>
-          </div>
-          <button className="h-inicio-saltar" onClick={() => setFase('historia')}>Ir directo a la portada</button>
-          </div>
-        </section>
+        <Antesala
+          siniestros={s}
+          riesgo={riesgo}
+          ahora={ahora}
+          clima={condicionVivo}
+          conPronostico={!!climaVivo}
+          onSonido={async () => {
+            silencioElegido.current = false
+            await encender()
+            setSonidoIntro(true)
+            setFase('intro')
+          }}
+          onSilencio={() => {
+            silencioElegido.current = true
+            apagar()
+            setSonidoIntro(false)
+            setFase('intro')
+          }}
+          onSaltar={() => setFase('historia')}
+        />
       )}
       {fase === 'intro' && (
-        <Intro
-          conSonido={sonidoIntro}
-          total={n}
-          desde={porAnio[0].anio}
-          hasta={porAnio[porAnio.length - 1].anio}
-          onFin={() => setFase('historia')}
-        />
+        <Intro conSonido={sonidoIntro} total={n} frase={foco.frase} onRevelar={() => setRevelando(true)} onFin={() => setFase('historia')} />
       )}
     </div>
   )
+}
+
+/** Ondas que salen del siniestro de la intro, como una alarma silenciosa (t avanza ~6 por segundo). */
+function anillosFoco(foco: { lon: number; lat: number }, t: number) {
+  return [0, 1, 2].map((k) => {
+    const fase = ((t / 6) * 0.55 + k / 3) % 1
+    return new ScatterplotLayer({
+      id: `foco-onda-${k}`,
+      data: [foco],
+      getPosition: (f: { lon: number; lat: number }) => [f.lon, f.lat],
+      filled: false,
+      stroked: true,
+      radiusUnits: 'pixels',
+      getRadius: 9 + fase * 70,
+      lineWidthUnits: 'pixels',
+      getLineWidth: 1.6,
+      getLineColor: [255, 150, 96, Math.round(210 * (1 - fase) ** 1.6)],
+      updateTriggers: { getRadius: fase, getLineColor: fase },
+    })
+  })
 }
