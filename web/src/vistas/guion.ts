@@ -1,6 +1,6 @@
 // Guion de la historia: lo que ve el público (nombre) y lo que lee el orador en la ventana de notas.
 export type IdActo =
-  | 'portada' | 'ciudad' | 'pregunta' | 'sol' | 'lluvia' | 'noche' | 'tormenta' | 'patron' | 'respuesta' | 'acierta'
+  | 'portada' | 'ciudad' | 'crudos' | 'pregunta' | 'sol' | 'lluvia' | 'noche' | 'tormenta' | 'patron' | 'respuesta' | 'acierta'
   | 'datos' | 'pipeline' | 'modelo' | 'limites' | 'ahora'
 
 export interface Guion {
@@ -35,6 +35,17 @@ export const GUION: Guion[] = [
       'El reloj recorre las 24 horas de un día: se encienden los siniestros de cada hora y el mapa pasa de noche a día.',
       'Dos ideas: las avenidas y autopistas dibujan el mapa (el dónde) y la hora marca el ritmo (el cuándo). A las 4 de la mañana hay diez veces menos siniestros que a las 17.',
       'Anticipar: al final vamos a ver que el dónde y el cuándo explican casi todo el modelo.',
+    ],
+  },
+  {
+    id: 'crudos',
+    nombre: 'Antes del modelo',
+    segundos: 60,
+    notas: [
+      'Antes del modelo: el tablero de Power BI con los datasets tal como vienen (siniestros de BA Data y clima de Open-Meteo).',
+      'Mostrar dos o tres indicadores y no más: la idea es que vean el material de partida, no recorrer todo el tablero.',
+      'Antes de presentar: abrir el reporte en el navegador de la notebook e iniciar sesión en Power BI; si no, el recuadro pide credenciales.',
+      'Después de tocar el reporte, sacar el mouse del recuadro para que vuelvan a andar el clicker y las flechas (o usar el botón de abajo).',
     ],
   },
   {

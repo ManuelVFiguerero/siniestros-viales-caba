@@ -78,6 +78,7 @@ const CON_CLIMA: Record<string, string> = {
 const ESCENA: Record<IdActo, { escena: { dia: number; hora: number; clima: string } | null; camara: Camara }> = {
   portada: { escena: null, camara: { zoom: 11.05, pitch: 40, bearing: -12 } },
   ciudad: { escena: null, camara: { zoom: 11.25, pitch: 28, bearing: -10 } },
+  crudos: { escena: null, camara: { zoom: 10.9, pitch: 18, bearing: 8 } },
   pregunta: { escena: null, camara: { zoom: 11.05, pitch: 0, bearing: 0 } },
   sol: { escena: { dia: MARTES, hora: 14, clima: 'despejado' }, camara: { zoom: 11.55, pitch: 34, bearing: -14 } },
   lluvia: { escena: { dia: MARTES, hora: 14, clima: 'lluvia' }, camara: { zoom: 11.75, pitch: 52, bearing: 6 } },
@@ -93,6 +94,9 @@ const ESCENA: Record<IdActo, { escena: { dia: number; hora: number; clima: strin
   ahora: { escena: null, camara: { zoom: 11.4, pitch: 0, bearing: 0 } },
 }
 const ULTIMO = GUION.length - 1
+/** Tablero de Power BI con los datos de origen (acto "Antes del modelo"). */
+const POWER_BI =
+  'https://app.powerbi.com/reportEmbed?reportId=0cf3b4be-f388-48d0-ad23-9e338cf180bc&autoAuth=true&ctid=344979d0-d31d-4c57-8ba0-491aff4acaed'
 const CON_TRANSITO: IdActo[] = ['sol', 'lluvia', 'noche', 'tormenta', 'ahora']
 
 const pct = (rr: number) => Math.round((rr - 1) * 100)
@@ -325,8 +329,8 @@ export function Historia({ riesgo, siniestros: s, patrones, modelo, onExplorar }
 
   // ---------- capas ----------
   const tecnico = GUION[acto].parte === 'tecnica'
-  const mostrarPuntos = id === 'portada' || id === 'ciudad' || id === 'pregunta' || id === 'acierta' || tecnico
-  const tenue = id === 'pregunta' || id === 'ciudad' || tecnico
+  const mostrarPuntos = id === 'portada' || id === 'ciudad' || id === 'crudos' || id === 'pregunta' || id === 'acierta' || tecnico
+  const tenue = id === 'pregunta' || id === 'ciudad' || id === 'crudos' || tecnico
   const enPortada = id === 'portada'
   const es3d = id === 'tormenta'
   const filtro = useMemo(() => new DataFilterExtension({ filterSize: 1 }), [])
@@ -514,7 +518,7 @@ export function Historia({ riesgo, siniestros: s, patrones, modelo, onExplorar }
         t.kill()
       }
     }
-    if (id === 'pregunta' || GUION[acto].parte === 'tecnica') setRevelados(n)
+    if (id === 'pregunta' || id === 'crudos' || GUION[acto].parte === 'tecnica') setRevelados(n)
     if (id === 'noche') {
       const o = { h: 14 }
       setHoraVis(14)
@@ -647,6 +651,16 @@ export function Historia({ riesgo, siniestros: s, patrones, modelo, onExplorar }
   const bloqueo = useRef(0)
   const acumulado = useRef(0)
   const toqueY = useRef<number | null>(null)
+  // El reporte de Power BI se empieza a cargar desde el acto anterior y queda montado (no recarga al volver).
+  const iCrudos = GUION.findIndex((g) => g.id === 'crudos')
+  const [pbiMontado, setPbiMontado] = useState(false)
+  useEffect(() => {
+    if (fase === 'historia' && acto >= iCrudos - 1) setPbiMontado(true)
+  }, [fase, acto, iCrudos])
+  // Al sacar el mouse del reporte, el foco vuelve a la presentación (si no, el iframe se queda con el clicker y las flechas).
+  const soltarFoco = () => {
+    if (document.activeElement instanceof HTMLIFrameElement) document.activeElement.blur()
+  }
   useEffect(() => {
     const el = raiz.current
     if (!el) return
@@ -757,7 +771,7 @@ export function Historia({ riesgo, siniestros: s, patrones, modelo, onExplorar }
   const transitoSonido =
     id === 'portada' ? (hero === 'listo' ? 0.12 : 0.05)
     : id === 'ciudad' ? 0.1 + 0.85 * (pulso.porHora[Math.floor(horaPulso) % 24] / pulso.max)
-    : id === 'pregunta' || id === 'acierta' || tecnico ? 0.25
+    : id === 'pregunta' || id === 'crudos' || id === 'acierta' || tecnico ? 0.25
     : Math.min(1, (perfilDespejado[horaEscena] / maxPerfil) * fClima.cantidad)
   useAmbienteSonoro({
     clima: climaAmbiente,
@@ -1134,8 +1148,20 @@ export function Historia({ riesgo, siniestros: s, patrones, modelo, onExplorar }
           )}
         </section>
       ) : (
-        <section className="h-panel" key={id} aria-live="polite">
+        id !== 'crudos' && <section className="h-panel" key={id} aria-live="polite">
           {panel}
+        </section>
+      )}
+
+      {pbiMontado && (
+        <section className={`h-pbi${id === 'crudos' && !libre ? ' on' : ''}`} aria-hidden={id !== 'crudos'}>
+          <header className="h-pbi-cabeza">
+            <h2 className="h-pbi-titulo">Antes del modelo, los datos.</h2>
+            <p className="h-pbi-nota">Indicadores de los datasets de siniestros, obtenidos de BA Data, y de clima horario, obtenidos de Open-Meteo.</p>
+          </header>
+          <div className="h-pbi-marco" onMouseLeave={soltarFoco}>
+            <iframe title="Tablero de Power BI con los datos de origen" src={POWER_BI} allowFullScreen tabIndex={id === 'crudos' ? 0 : -1} />
+          </div>
         </section>
       )}
 
