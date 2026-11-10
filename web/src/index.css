@@ -844,3 +844,18 @@ body:has(.notas) { overflow: auto; }
 @media (max-width: 760px) {
   .historia.acto-acierta .h-panel:not(.h-portada), .historia.acto-patron .h-panel:not(.h-portada) { width: auto; }
 }
+
+/* ---------- acto "Los datos crudos": tablero de Power BI ---------- */
+.acto-crudos .h-velo { background: radial-gradient(ellipse at 50% 50%, rgba(5, 6, 8, 0.8), rgba(5, 6, 8, 0.94) 80%); }
+.h-pbi { position: absolute; z-index: 2; left: clamp(20px, 5vw, 80px); right: clamp(140px, 13vw, 200px); top: 74px; bottom: 64px; display: flex; flex-direction: column; gap: 14px; opacity: 0; visibility: hidden; transform: translateY(14px); transition: opacity 0.6s ease, transform 0.6s ease, visibility 0s 0.6s; pointer-events: none; }
+.h-pbi.on { opacity: 1; visibility: visible; transform: none; transition: opacity 0.7s ease 0.15s, transform 0.7s ease 0.15s, visibility 0s; pointer-events: auto; }
+.h-pbi-cabeza { display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; }
+.h-pbi-titulo { margin: 0; font-size: clamp(26px, 2.6vw, 40px); font-weight: 600; letter-spacing: -0.03em; line-height: 1.05; text-shadow: 0 2px 22px rgba(0, 0, 0, 0.65); }
+.h-pbi-nota { margin: 0; color: var(--ink-2); font-size: clamp(13px, 1vw, 15px); max-width: 52ch; }
+/* El recuadro mantiene 16:9 (como el lienzo del reporte) dentro del espacio disponible. */
+.h-pbi-marco { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; container-type: size; }
+.h-pbi-marco iframe { display: block; width: min(100cqw, calc(100cqh * 16 / 9)); height: min(100cqh, calc(100cqw * 9 / 16)); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 14px; background: rgba(8, 10, 13, 0.6); box-shadow: 0 24px 70px rgba(0, 0, 0, 0.5); }
+@media (max-width: 760px) {
+  .h-pbi { left: 10px; right: 10px; top: 70px; bottom: 80px; }
+}
+@media (prefers-reduced-motion: reduce) { .h-pbi, .h-pbi.on { transition: none; transform: none; } }
