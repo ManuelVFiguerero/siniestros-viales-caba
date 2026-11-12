@@ -91,7 +91,8 @@ export function Notas() {
           </div>
         </div>
       </header>
-      <ul className="notas-lista">
+      {/* Los actos técnicos tienen muchas notas: letra más chica para que entren sin tanto scroll. */}
+      <ul className={`notas-lista${g.notas.length > 6 ? ' densa' : ''}`}>
         {g.notas.map((n) => (
           <li key={n}>{n}</li>
         ))}
