@@ -641,6 +641,7 @@ body:has(.notas) { overflow: auto; }
 .notas-relojes .pasado strong { color: var(--up); }
 .notas-lista { margin: 0; padding-left: 22px; display: flex; flex-direction: column; gap: 14px; font-size: 21px; line-height: 1.45; }
 .notas-lista li::marker { color: var(--ink-3); }
+.notas-lista.densa { font-size: 17px; gap: 9px; line-height: 1.4; }
 .notas-pie { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-top: auto; padding-top: 16px; border-top: 1px solid var(--line); }
 .notas-pie p { margin: 0; color: var(--ink-2); font-size: 16px; }
 .notas-pie button { background: var(--panel-2); border: 1px solid var(--line-2); color: var(--ink); border-radius: 8px; padding: 12px 20px; font-size: 16px; cursor: pointer; }

@@ -1176,7 +1176,8 @@ export function Historia({ riesgo, siniestros: s, patrones, modelo, onExplorar }
       {!libre && (
         <nav className="h-actos" aria-label="Actos">
           {GUION.slice(1).map((a, k) => [
-            a.parte === 'tecnica' && GUION[k].parte !== 'tecnica' ? <span key="sep" className="h-actos-sep" title="Detrás de los datos" /> : null,
+            // Un solo separador, antes del primer acto técnico ("¿El modelo acierta?" va entre los técnicos).
+            k + 1 === GUION.findIndex((g) => g.parte === 'tecnica') ? <span key="sep" className="h-actos-sep" title="Detrás de los datos" /> : null,
             <button key={a.id} className={acto === k + 1 ? 'on' : acto > k + 1 ? 'visto' : ''} onClick={() => ir(k + 1)} aria-label={`${k + 1}. ${a.nombre}`} aria-current={acto === k + 1}>
               <span>{a.nombre}</span>
             </button>,
